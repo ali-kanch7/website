@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Content Pipeline Dashboard</title>
+    <style>
+        body { font-family: system-ui, sans-serif; background: #f0f4f8; max-width: 600px; margin: 40px auto; padding: 20px; }
+        .panel { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h2 { color: #1a365d; margin-top: 0; display: flex; align-items: center; gap: 10px; }
+        .block { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; color: #2d3748; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+        .radio-box { background: #f8fafc; padding: 14px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid #3b82f6; cursor: pointer; display: flex; align-items: center; }
+        .radio-box input { cursor: pointer; }
+        button { background: #2563eb; color: white; border: none; padding: 14px; width: 100%; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
+        button:hover { background: #1d4ed8; }
+        #log { margin-top: 20px; padding: 12px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="panel">
+    <h2>🎛️ AI Agent Blog Control Panel</h2>
+    
+    <div class="block">
+        <label>GitHub Personal Access Token (PAT):</label>
+        <input type="password" id="pat" placeholder="paste your github_pat_... security token">
+    </div>
+
+    <div class="block">
+        <label>Select Pipeline Strategy Mode:</label>
+        
+        <div class="radio-box">
+            <input type="radio" id="m1" name="mode" value="WRITE_SPECIFIC_TOPIC" checked onclick="uiShift()">
+            <label style="margin-left:8px; cursor:pointer;" for="m1">Option 1: Write an Explicit / Preset Topic</label>
+        </div>
+        
+        <div class="radio-box">
+            <input type="radio" id="m2" name="mode" value="GENERATE_TOPICS_LIST" onclick="uiShift()">
+            <label style="margin-left:8px; cursor:pointer;" for="m2">Option 2: Generate an Idea List from a Subject</label>
+        </div>
+        
+        <div class="radio-box">
+            <input type="radio" id="m3" name="mode" value="TREND_CHOOSE" onclick="uiShift()">
+            <label style="margin-left:8px; cursor:pointer;" for="m3">Option 3: Let Agents Find & Write a Hot Trend</label>
+        </div>
+    </div>
+
+    <div class="block" id="dynamicInputContainer">
+        <label id="inputLabel">Enter Target Topic:</label>
+        <input type="text" id="payloadInput" placeholder="e.g., Enterprise Firewall Setup Guide">
+    </div>
+
+    <button onclick="firePipeline()">Launch AI Agents</button>
+    <div id="log"></div>
+</div>
+
+<script>
+    // Config values
+    const USERNAME = "ali-kanch7"; 
+    const REPO = "auto-blogger"; 
+
+    function uiShift() {
+        const selected = document.querySelector('input[name="mode"]:checked').value;
+        const lbl = document.getElementById("inputLabel");
+        const inp = document.getElementById("payloadInput");
+        
+        if (selected === "WRITE_SPECIFIC_TOPIC") {
+            lbl.innerText = "Target Topic Name to Write:";
+            inp.placeholder = "e.g., Network Automation Basics";
+        } else if (selected === "GENERATE_TOPICS_LIST") {
+            lbl.innerText = "Broad Subject for Topic Brainstorming:";
+            inp.placeholder = "e.g., Cloud Security Frameworks";
+        } else {
+            lbl.innerText = "Broad Subject Sphere for Trend Hunting:";
+            inp.placeholder = "e.g., Microservices and Virtualization";
+        }
+    }
+
+    async function firePipeline() {
+        const token = document.getElementById("pat").value.trim();
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+        const text = document.getElementById("payloadInput").value.trim();
+        const log = document.getElementById("log");
+
+        if(!token || !text) {
+            log.style.color = "#dc2626";
+            log.innerText = "All dashboard parameter input fields are mandatory.";
+            return;
+        }
+
+        log.style.color = "#d97706";
+        log.innerText = "Deploying parameters to GitHub Engine Core...";
+
+        const endpoint = `https://api.github.com/repos/${USERNAME}/${REPO}/actions/workflows/daily_blog.yml/dispatches`;
+        
+        try {
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/vnd.github+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ ref: 'main', inputs: { execution_mode: mode, user_input_text: text } })
+            });
+
+            if(res.status === 204) {
+                log.style.color = "#16a34a";
+                log.innerText = "🚀 Launch Command Accepted! Your Grok Agents are compiling. Check your GitHub Actions tab to trace output file generation.";
+            } else {
+                log.style.color = "#dc2626";
+                log.innerText = "Connection rejected. Please verify the accuracy of your GitHub Token permissions.";
+            }
+        } catch(e) {
+            log.style.color = "#dc2626";
+            log.innerText = "Data transmission failure.";
+        }
+    }
+    uiShift();
+</script>
+</body>
+</html>
