@@ -23,10 +23,10 @@ This is the simplest, completely free option.
 
 1. Create a free account at https://github.com
 2. Create a new repository named exactly: `yourusername.github.io`
-   - E.g. if your GitHub username is `alikanch7`, name it `alikanch7.github.io`
+   - E.g. if your GitHub username is `ali-kanch7`, name it `ali-kanch7.github.io`
 3. Upload all website files to that repo (drag and drop in the browser)
 4. Go to Settings → Pages → set Source to "Deploy from branch: main"
-5. Your site is live at `https://alikanch7.github.io` within 2 minutes
+5. Your site is live at `https://ali-kanch7.github.io` within 2 minutes
 
 ### Updating the site
 
@@ -37,7 +37,7 @@ This is the simplest, completely free option.
 ### Custom domain (when you're ready to buy one)
 - Buy a `.com` domain (Namecheap is cheapest, ~$10/year)
 - In GitHub Pages settings → add your custom domain
-- At your domain registrar, add a CNAME record pointing to `alikanch7.github.io`
+- At your domain registrar, add a CNAME record pointing to `ali-kanch7.github.io`
 - Free HTTPS is included automatically
 
 ---
