@@ -6,6 +6,7 @@
 website/
 ├── index.html          ← Main CV/portfolio page
 ├── blog.html           ← Blog listing page
+├── write.html          ← Blog Writing page
 ├── css/style.css       ← All styles
 ├── js/main.js          ← Navigation + interactions
 └── blog/
