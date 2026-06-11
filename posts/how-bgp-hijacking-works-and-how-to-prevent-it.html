@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BGP Hijacking: The Internet's Broken Trust Model</title>
+    <script type='module'>
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({startOnLoad:true});
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: #f9f9f9;
+        }
+        header { border-bottom: 2px solid #333; margin-bottom: 2rem; padding-bottom: 1rem; }
+        h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        h2 { margin-top: 2rem; color: #2c3e50; }
+        p { margin-bottom: 1.5rem; }
+        .mermaid { background: #fff; padding: 1rem; border-radius: 8px; border: 1px solid #ddd; }
+        code { background: #eee; padding: 0.2rem 0.4rem; border-radius: 4px; font-family: monospace; }
+        .summary-box {
+            background: #eef6ff;
+            border-left: 5px solid #007bff;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>BGP Hijacking: The Internet's Broken Trust Model</h1>
+</header>
+
+<p>The internet is essentially a massive, loosely connected group of networks that agree to talk to each other. The Border Gateway Protocol (BGP) is the glue holding this together. But BGP was built in an era where everyone on the network was assumed to be a friend. There is no ID check at the door.</p>
+
+<p>BGP hijacking is what happens when someone decides to lie about where that door leads.</p>
+
+<h2>The "Honor System" Flaw</h2>
+<p>BGP works on a path-vector mechanism. Think of it like a game of "Telephone." Every network (Autonomous System, or AS) tells its neighbors, "Hey, I know how to get to this specific block of IP addresses."</p>
+
+<p>The problem? Routers don't ask for proof. If an AS claims it owns a block of IPs, the rest of the internet just believes it and updates its routing tables. It’s like someone walking into a post office, claiming they are the new owner of your street, and having all your mail redirected to their house.</p>
+
+<h2>How the Hijack Happens</h2>
+<p>Attackers usually play one of two cards:</p>
+<ul>
+    <li><strong>The Longest Prefix Match:</strong> Routers love specificity. If the real owner announces a broad range (like <code>10.0.0.0/16</code>) and the attacker announces a tiny slice of that range (like <code>10.0.0.0/24</code>), the router will always choose the attacker’s path because it’s more specific.</li>
+    <li><strong>The Shortest Path:</strong> BGP prefers the path with the fewest hops. An attacker can announce the same prefix as the victim but fake the path to make it look like they are "closer" to the rest of the internet.</li>
+</ul>
+
+<pre class='mermaid'>
+graph TD
+    A[Legitimate AS] -- "Original Route" --> B[Internet]
+    C[Attacker AS] -- "Fake, More Specific Route" --> B
+    B --> C
+    style C fill:#ffcccc,stroke:#ff0000
+</pre>
+
+<h2>The Propagation Workflow</h2>
+<p>Once the lie is injected, it spreads like wildfire:</p>
+<ol>
+    <li><strong>Injection:</strong> The attacker sends a BGP update to their upstream provider.</li>
+    <li><strong>Validation Failure:</strong> The provider, lacking strict filters, accepts the lie.</li>
+    <li><strong>Propagation:</strong> The lie is broadcast to the rest of the global routing table.</li>
+    <li><strong>Disposition:</strong> Traffic hits the attacker. They can drop it (blackholing), inspect it (MITM), or just impersonate the service.</li>
+</ol>
+
+<h2>How We Fix It</h2>
+<p>We are slowly moving away from the "honor system" toward cryptographic proof.</p>
+<ul>
+    <li><strong>RPKI (Resource Public Key Infrastructure):</strong> This is the gold standard. It’s a digital certificate that says, "Only AS X is allowed to announce Prefix Y." If a router sees an announcement that doesn't match the certificate, it marks it as <code>Invalid</code> and ignores it.</li>
+    <li><strong>BGPsec:</strong> This takes it a step further by signing the entire path. It’s computationally heavy, which is why it hasn't seen widespread adoption yet.</li>
+    <li><strong>Prefix Filtering:</strong> The manual approach. Network operators create "allow-lists" for their peers. It’s secure, but it’s a massive headache to maintain.</li>
+</ul>
+
+<div class="summary-box">
+    <h3>The Bottom Line</h3>
+    <p>BGP hijacking works because the internet relies on implicit trust. To stop it, we have to stop trusting and start verifying. <strong>Implement RPKI today</strong> to sign your routes, and ensure your upstream providers are performing strict route origin validation. The goal is to move from a "web of trust" to a "web of proof."</p>
+</div>
+
+</body>
+</html>
