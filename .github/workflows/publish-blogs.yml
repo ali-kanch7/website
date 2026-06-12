@@ -1,0 +1,95 @@
+name: Auto-Publish Blogs
+
+on:
+  push:
+    paths:
+      - 'posts/*.html' # Triggers whenever a new HTML file arrives in posts/
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-node-version: '20'
+
+      - name: Process Posts and Update JS
+        run: |
+          node -e '
+          const fs = require("fs");
+          const path = require("path");
+
+          const postsDir = path.join(process.cwd(), "posts");
+          const jsPath = path.join(process.cwd(), "blog", "posts.js");
+
+          if (!fs.existsSync(postsDir)) {
+            console.log("No posts directory found.");
+            process.exit(0);
+          }
+
+          const files = fs.readdirSync(postsDir).filter(f => f.endsWith(".html"));
+          const blogPosts = [];
+
+          files.forEach(file => {
+            const filePath = path.join(postsDir, file);
+            let content = fs.readFileSync(filePath, "utf8");
+            const slug = file.replace(".html", "");
+
+            // Extract metadata from the HTML file tags
+            const titleMatch = content.match(/<title>([\s\S]*?)<\/title>/i);
+            const descMatch = content.match(/<meta\s+name=["\x27]description["\x27]\s+content=["\x27]([\s\S]*?)["\x27]/i);
+            
+            const title = titleMatch ? titleMatch[1].replace("— Ali Asgar Kanchwala", "").trim() : "Untitled Post";
+            const excerpt = descMatch ? descMatch[1].trim() : "Read the latest article.";
+            
+            // Stats (Default or fallback fallback calculations)
+            const words = content.replace(/<[^>]*>/g, "").split(/\s+/).length;
+            const readTime = `${Math.max(1, Math.ceil(words / 200))} min read`;
+            
+            // Try to find a human-readable date, otherwise use today format
+            const dateMatch = content.match(/<span>([A-Za-z]+\s+\d{4})<\/span>/);
+            const date = dateMatch ? dateMatch[1] : new Date().toLocaleString("default", { month: "long", year: "numeric" });
+
+            // Push to our structural array
+            blogPosts.push({
+              slug: `../posts/${slug}`, // Points out of blog/ context to posts/
+              title: title,
+              tag: "Security", // Default fallback category
+              excerpt: excerpt,
+              date: date,
+              readTime: readTime
+            });
+            
+            // Fix relative stylesheet paths in the post if they came from a root template
+            if (content.includes("../css/style.css")) {
+              content = content.replace(/\.\.\/css\//g, "../css/");
+              content = content.replace(/\.\.\/js\//g, "../js/");
+              content = content.replace(/\.\.\/index\.html/g, "../index.html");
+              content = content.replace(/\.\.\/blog\.html/g, "../blog.html");
+              fs.writeFileSync(filePath, content, "utf8");
+            }
+          });
+
+          // Sort posts by file creation/modification time or reverse alphabetical as a proxy for newest
+          blogPosts.sort((a, b) => b.slug.localeCompare(a.slug));
+
+          // Write back out to posts.js
+          const output = `// Auto-generated file. Do not edit.\nconst blogPosts = ${JSON.stringify(blogPosts, null, 2)};`;
+          fs.writeFileSync(jsPath, output, "utf8");
+          console.log("Successfully updated blog/posts.js!");
+          '
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add blog/posts.js posts/*.html
+          git diff-index --quiet HEAD || git commit -m "chore: auto-publish new blog metadata"
+          git push
