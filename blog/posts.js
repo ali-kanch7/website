@@ -9,6 +9,14 @@ const blogPosts = [
     "readTime": "4 min read"
   },
   {
+    "slug": "../posts/the-hidden-risks-of-gitops-in-network-security-protecting-your-state-files",
+    "title": "The Hidden Risks of GitOps in Network Security",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "June 2026",
+    "readTime": "4 min read"
+  },
+  {
     "slug": "../posts/linting-infrastructure-catching-vlan-leaks-and-misconfigurations-in-cicd-pipelines",
     "title": "Linting Infrastructure: Catching VLAN Leaks",
     "tag": "Security",
