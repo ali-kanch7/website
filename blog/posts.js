@@ -17,6 +17,14 @@ const blogPosts = [
     "readTime": "4 min read"
   },
   {
+    "slug": "../posts/macsec-vs-ipsec-architectural-trade-offs-for-high-speed-line-rate-encryption",
+    "title": "MACsec vs. IPsec: Architectural Trade-offs",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "June 2026",
+    "readTime": "3 min read"
+  },
+  {
     "slug": "../posts/linting-infrastructure-catching-vlan-leaks-and-misconfigurations-in-cicd-pipelines",
     "title": "Linting Infrastructure: Catching VLAN Leaks",
     "tag": "Security",
