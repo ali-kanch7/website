@@ -17,6 +17,14 @@ const blogPosts = [
     "readTime": "4 min read"
   },
   {
+    "slug": "../posts/the-anatomy-of-a-zero-trust-network-architecture-ztna-controller-failure-designing-for-high-availability",
+    "title": "The Anatomy of a ZTNA Controller Failure",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "June 2026",
+    "readTime": "4 min read"
+  },
+  {
     "slug": "../posts/macsec-vs-ipsec-architectural-trade-offs-for-high-speed-line-rate-encryption",
     "title": "MACsec vs. IPsec: Architectural Trade-offs",
     "tag": "Security",
