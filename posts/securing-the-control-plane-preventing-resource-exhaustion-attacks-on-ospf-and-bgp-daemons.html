@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Securing the Control Plane: Preventing Resource Exhaustion</title>
+    <script type='module'>
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({startOnLoad:true});
+    </script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        h1, h2 { color: #1a1a1a; }
+        code { background: #f4f4f4; padding: 2px 5px; border-radius: 3px; font-family: monospace; }
+        .mermaid { background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .summary { background: #eef6ff; padding: 20px; border-left: 5px solid #007bff; border-radius: 4px; }
+        .highlight { color: #d63384; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>Securing the Control Plane: Preventing Resource Exhaustion</h1>
+
+    <p>Think of your network’s control plane as the brain of the operation. It’s where OSPF and BGP daemons live, constantly calculating paths and talking to neighbors. If the brain gets overwhelmed, the body—your data plane—stops moving traffic. Resource Exhaustion (RE) attacks are the digital equivalent of a migraine that forces the entire system to shut down.</p>
+
+    <h2>The Vulnerability Surface</h2>
+    <p>Routing daemons like <code>bird</code> or <code>frr</code> run in user space. They aren't invincible. They rely on the CPU to crunch numbers and RAM to store routing tables. When an attacker floods these daemons with malicious updates, they aren't just sending traffic; they’re forcing the daemon to perform expensive, repetitive tasks until it hits a wall.</p>
+
+    <p>In OSPF, the target is the Shortest Path First (SPF) calculation. If you flood the daemon with fake Link State Advertisements (LSAs), the router is forced to run Dijkstra’s algorithm over and over. In BGP, the attacker targets the Routing Information Base (RIB). By dumping thousands of bogus prefixes, they can force the daemon to exhaust its memory heap, leading to a crash.</p>
+
+    <pre class='mermaid'>
+    graph TD
+        A[Packet Ingress] --> B{Control Plane Packet?}
+        B -- No --> C[Data Plane Forwarding]
+        B -- Yes --> D[CoPP Filter]
+        D -- Rate Limit Exceeded --> E[Drop & Log]
+        D -- Within Limits --> F[Daemon Processing]
+        F --> G{Valid Update?}
+        G -- No --> H[Reject & Close Session]
+        G -- Yes --> I[Update RIB/LSDB]
+    </pre>
+
+    <h2>The Attack Logic</h2>
+    <p>An RE attack follows a predictable, destructive path. It starts with a simple packet injection. Once the daemon accepts the packet, it validates the checksum and attempts to integrate the data into its internal database. If the volume is high enough, the CPU spikes to 100% while trying to recalculate the topology. Simultaneously, the memory usage climbs as the daemon tries to store the flood of junk data. Eventually, the kernel stops responding, the routing protocol flaps, and your network partitions.</p>
+
+    <h2>Defense-in-Depth</h2>
+    <p>You don't have to leave your brain exposed. The first line of defense is <strong>Control Plane Policing (CoPP)</strong>. Think of CoPP as a bouncer at the door. It doesn't care who you are; it only cares how fast you’re moving. By rate-limiting OSPF and BGP traffic, you ensure that even during a flood, the daemon only processes what it can handle.</p>
+
+    <p>Next, use <strong>Resource Throttling</strong>. For OSPF, implement LSA throttling so the router doesn't panic and recalculate the SPF tree every time a single link flickers. For BGP, use <code>maximum-prefix</code> limits. If a neighbor tries to send you a million routes, the daemon should kill the session before it kills your memory.</p>
+
+    <p>Finally, don't trust the wire. Use cryptographic authentication. HMAC-SHA for OSPF and TCP-AO for BGP ensure that only neighbors you’ve explicitly vetted can talk to your control plane. If an attacker can’t prove who they are, they don’t get to trigger your CPU.</p>
+
+    <h2>Actionable Summary</h2>
+    <div class="summary">
+        <ul>
+            <li><strong>Implement CoPP:</strong> Rate-limit control plane traffic to prevent CPU saturation.</li>
+            <li><strong>Hard-Limit Resources:</strong> Use <code>maximum-prefix</code> for BGP and LSA throttling for OSPF.</li>
+            <li><strong>Secure the Peering:</strong> Use HMAC-SHA or TCP-AO instead of legacy MD5.</li>
+            <li><strong>Monitor Utilization:</strong> Set alerts for CPU and BGP prefix counts at 70% capacity.</li>
+            <li><strong>Use OOB Management:</strong> Keep control traffic off the main data path.</li>
+        </ul>
+    </div>
+
+</body>
+</html>
