@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Purdue Model Is Lying to You — OT/IT Convergence Security</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #080d18;
+    --bg-card:   #0f1927;
+    --bg-raise:  #152035;
+    --amber:     #f0a500;
+    --amber-dim: #7a5200;
+    --blue:      #4a9eff;
+    --blue-dim:  #1e3a5f;
+    --text:      #d4dce8;
+    --text-dim:  #7a8a9e;
+    --text-head: #eef2f8;
+    --border:    #1e2d42;
+    --danger:    #e05252;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 17px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Progress bar ── */
+  #progress {
+    position: fixed;
+    top: 0; left: 0;
+    height: 2px;
+    width: 0%;
+    background: linear-gradient(90deg, var(--amber), var(--blue));
+    z-index: 999;
+    transition: width 0.1s linear;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    position: relative;
+    min-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 0 24px 72px;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 60% 30%, #0d2040 0%, transparent 70%),
+      radial-gradient(ellipse 50% 40% at 20% 80%, #1a0a00 0%, transparent 60%),
+      var(--bg);
+  }
+
+  /* Oscilloscope signal line */
+  .signal-line {
+    position: absolute;
+    top: 38%;
+    left: 0;
+    width: 100%;
+    height: 80px;
+    opacity: 0.18;
+  }
+
+  .signal-line svg { width: 100%; height: 100%; }
+
+  .grid-overlay {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 60px 60px;
+    opacity: 0.25;
+  }
+
+  .hero-inner {
+    position: relative;
+    max-width: 860px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 28px;
+    height: 1px;
+    background: var(--amber);
+  }
+
+  .hero h1 {
+    font-size: clamp(38px, 6vw, 72px);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    color: var(--text-head);
+    margin-bottom: 16px;
+  }
+
+  .hero h1 em {
+    font-style: normal;
+    color: var(--amber);
+  }
+
+  .hero-sub {
+    font-size: 20px;
+    color: var(--text-dim);
+    max-width: 560px;
+    line-height: 1.5;
+    margin-bottom: 40px;
+  }
+
+  .hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .meta-item .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--amber);
+    flex-shrink: 0;
+  }
+
+  .read-time-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 32px;
+  }
+
+  .read-time-bar span {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  .rt-track {
+    flex: 1;
+    max-width: 180px;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .rt-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, var(--amber), var(--blue));
+    transform: scaleX(0);
+    transform-origin: left;
+    animation: fillBar 1.2s 0.5s cubic-bezier(0.4,0,0.2,1) forwards;
+  }
+
+  @keyframes fillBar { to { transform: scaleX(1); } }
+
+  /* ── Article layout ── */
+  .article {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 80px 24px 120px;
+  }
+
+  /* ── Section headings ── */
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 10px;
+    margin-top: 72px;
+  }
+
+  h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-head);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h3 {
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--text-head);
+    margin-top: 40px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  h3::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 18px;
+    background: var(--amber);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  p { margin-bottom: 20px; }
+
+  strong { color: var(--text-head); font-weight: 600; }
+
+  a { color: var(--blue); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color 0.2s; }
+  a:hover { border-color: var(--blue); }
+
+  /* ── Diagram containers ── */
+  .diagram-wrap {
+    margin: 48px 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .diagram-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-raise);
+  }
+
+  .diagram-header .d-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  .diagram-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    flex: 1;
+  }
+
+  .diagram-body {
+    padding: 28px 20px;
+    overflow-x: auto;
+  }
+
+  .diagram-body .mermaid {
+    display: flex;
+    justify-content: center;
+  }
+
+  /* Override mermaid SVG text colors for dark bg */
+  .mermaid svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* ── Callout boxes ── */
+  .callout {
+    margin: 40px 0;
+    padding: 24px 28px;
+    border-radius: 8px;
+    border-left: 3px solid;
+    background: var(--bg-card);
+  }
+
+  .callout-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+
+  .callout p { margin-bottom: 0; }
+
+  .callout.info {
+    border-color: var(--blue);
+  }
+  .callout.info .callout-title { color: var(--blue); }
+
+  .callout.warn {
+    border-color: var(--amber);
+    background: #120d02;
+  }
+  .callout.warn .callout-title { color: var(--amber); }
+
+  /* Hazard-tape critical callout — the signature element */
+  .callout.critical {
+    border: none;
+    border-radius: 8px;
+    overflow: hidden;
+    padding: 0;
+    background: none;
+  }
+
+  .hazard-tape {
+    height: 10px;
+    background: repeating-linear-gradient(
+      -45deg,
+      #f0a500,
+      #f0a500 10px,
+      #1a0a00 10px,
+      #1a0a00 20px
+    );
+  }
+
+  .callout.critical .callout-inner {
+    padding: 24px 28px;
+    background: #120d02;
+    border: 1px solid var(--amber-dim);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+  }
+
+  .callout.critical .callout-title {
+    color: var(--amber);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+
+  .callout.critical p { margin-bottom: 0; }
+
+  /* ── Threat list ── */
+  .threat-list {
+    list-style: none;
+    margin: 28px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .threat-list li {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 18px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: border-color 0.2s;
+  }
+
+  .threat-list li:hover { border-color: var(--blue-dim); }
+
+  .threat-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .threat-body strong {
+    display: block;
+    font-size: 15px;
+    margin-bottom: 4px;
+    color: var(--text-head);
+  }
+
+  .threat-body p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.55;
+  }
+
+  /* ── Fix list ── */
+  .fix-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    margin: 32px 0;
+  }
+
+  .fix-item {
+    display: flex;
+    gap: 18px;
+    align-items: flex-start;
+    padding: 20px 22px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .fix-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--blue);
+    flex-shrink: 0;
+    padding-top: 3px;
+    min-width: 90px;
+  }
+
+  .fix-text strong {
+    display: block;
+    font-size: 15px;
+    margin-bottom: 6px;
+    color: var(--text-head);
+  }
+
+  .fix-text p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.55;
+  }
+
+  /* ── Closing ── */
+  .closing {
+    margin-top: 72px;
+    padding-top: 40px;
+    border-top: 1px solid var(--border);
+  }
+
+  .closing p {
+    font-size: 19px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .closing p strong { color: var(--amber); }
+
+  .author-line {
+    margin-top: 48px;
+    padding: 20px 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .author-avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue-dim), var(--amber-dim));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .author-info {
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .author-name {
+    font-size: 13px;
+    color: var(--text-head);
+    font-weight: 500;
+  }
+
+  .author-role {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    padding: 40px 24px;
+    border-top: 1px solid var(--border);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .hero h1 { font-size: 34px; }
+    .hero-sub { font-size: 16px; }
+    h2 { font-size: 22px; }
+    .fix-item { flex-direction: column; gap: 6px; }
+    .fix-label { min-width: auto; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rt-fill { animation: none; transform: scaleX(1); }
+  }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="grid-overlay"></div>
+
+  <!-- Oscilloscope signal line -->
+  <div class="signal-line">
+    <svg viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <polyline
+        points="0,40 60,40 80,10 100,70 120,40 200,40 220,15 240,65 260,40 340,40 360,20 380,60 400,40 480,40 500,5 520,75 540,40 620,40 640,25 660,55 680,40 760,40 780,12 800,68 820,40 900,40 920,18 940,62 960,40 1040,40 1060,8 1080,72 1100,40 1180,40 1200,22 1220,58 1240,40 1320,40 1340,14 1360,66 1380,40 1440,40"
+        fill="none"
+        stroke="#f0a500"
+        stroke-width="1.5"
+        vector-effect="non-scaling-stroke"
+      />
+    </svg>
+  </div>
+
+  <div class="hero-inner">
+    <div class="eyebrow">OT / IT Security · Industrial Networks · IEC 62443</div>
+    <h1>The Purdue Model<br>Is <em>Lying</em> to You</h1>
+    <p class="hero-sub">Why the industry's most trusted segmentation framework fails in the face of modern OT/IT convergence — and what to do instead.</p>
+
+    <div class="hero-meta">
+      <span class="meta-item"><span class="dot"></span> Network Security</span>
+      <span class="meta-item"><span class="dot"></span> OT / ICS / SCADA</span>
+      <span class="meta-item"><span class="dot"></span> IEC 62443</span>
+      <span class="meta-item"><span class="dot"></span> Zero Trust</span>
+    </div>
+
+    <div class="read-time-bar">
+      <span>~12 min read</span>
+      <div class="rt-track"><div class="rt-fill"></div></div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════ ARTICLE ═══════════════ -->
+<article class="article">
+
+  <!-- Intro -->
+  <p>There's a slide that appears in almost every OT security presentation. You've seen it a hundred times. A neat stack of boxes — Level 0 at the bottom (field devices), Level 1 (PLCs), Level 2 (SCADA), Level 3 (site operations), Level 4 (enterprise IT) — each layer separated from the next by a clean, reassuring line. The Purdue Model. The backbone of IEC 62443. The thing every compliance auditor nods approvingly at.</p>
+
+  <p>Here's the problem: your plant manager doesn't care about the Purdue Model. Your ERP system definitely doesn't. And your supply chain team that needs live production throughput data before they can update the delivery schedule? Absolutely not.</p>
+
+  <p>The model describes how networks <em>should</em> be segmented. It says almost nothing useful about how modern OT/IT environments <em>actually</em> behave — and that gap is exactly where your real risk lives.</p>
+
+  <!-- Section 1 -->
+  <div class="section-label">Section 01</div>
+  <h2>How the Purdue Model Was Designed to Work</h2>
+
+  <p>Before dismantling it, it's worth understanding what the model was actually trying to do.</p>
+
+  <p>The Purdue Reference Model (formally the Purdue Enterprise Reference Architecture, developed in the 1990s) defined functional layers in industrial environments and logical separation between them. The core idea was simple: data flows <em>up</em> the hierarchy, commands flow <em>down</em>, and nothing crosses layers without passing through a defined boundary.</p>
+
+  <div class="diagram-wrap">
+    <div class="diagram-header">
+      <span class="d-dot" style="background:#e05252"></span>
+      <span class="d-dot" style="background:#f0a500"></span>
+      <span class="d-dot" style="background:#50c878"></span>
+      <span class="diagram-title">FIGURE 01 — The Classic Purdue Model (as designed)</span>
+    </div>
+    <div class="diagram-body">
+      <div class="mermaid">
+graph TD
+    L0["⚙️  Level 0 — Field Devices\nSensors · Actuators · Drives"]
+    L1["🔧  Level 1 — Basic Control\nPLCs · RTUs · DCS Controllers"]
+    L2["🖥️  Level 2 — Supervisory Control\nSCADA · DCS · HMI"]
+    L3["📊  Level 3 — Site Operations\nHistorian · Batch Management · MES"]
+    DMZ["🔒  DMZ\nData Diode · Proxy · Firewall"]
+    L4["💼  Level 4 — Enterprise IT\nSAP ERP · Active Directory · Email"]
+    L5["🌐  Level 5 — External\nVendor Portals · Remote Access · Cloud"]
+
+    L0 --> L1 --> L2 --> L3 --> DMZ --> L4 --> L5
+
+    style L0 fill:#0d2a0d,color:#90d890,stroke:#2a6b2a
+    style L1 fill:#0d2a0d,color:#90d890,stroke:#2a6b2a
+    style L2 fill:#0d2a0d,color:#90d890,stroke:#2a6b2a
+    style L3 fill:#162a16,color:#90d890,stroke:#2a6b2a
+    style DMZ fill:#2a1f00,color:#f0a500,stroke:#7a5200
+    style L4 fill:#0d1f3a,color:#88b4f0,stroke:#1e4a8a
+    style L5 fill:#0d1f3a,color:#88b4f0,stroke:#1e4a8a
+      </div>
+    </div>
+  </div>
+
+  <p>Clean. Logical. Reassuring. Each level has a defined function. Traffic flows in one direction through a hardened DMZ. The OT world stays isolated from the chaos of enterprise IT.</p>
+
+  <p>The problem isn't the model itself. <strong>The problem is that the real world stopped cooperating with it the moment business intelligence, remote vendor access, and cloud connectivity entered the plant.</strong></p>
+
+  <!-- Section 2 -->
+  <div class="section-label">Section 02</div>
+  <h2>What's Actually Happening in Your Network</h2>
+
+  <p>Modern industrial enterprises are not running isolated OT islands. They're running hybrid environments shaped by three forces the Purdue Model never anticipated:</p>
+
+  <ul class="threat-list">
+    <li>
+      <span class="threat-icon">📈</span>
+      <div class="threat-body">
+        <strong>Real-time business intelligence demands</strong>
+        <p>Your ERP doesn't want yesterday's production data. It wants now. SAP's integration with historian platforms (OSIsoft PI, Honeywell PHD, GE Proficy) creates live data pathways between Level 3 and Level 4 that strain or bypass the DMZ concept entirely.</p>
+      </div>
+    </li>
+    <li>
+      <span class="threat-icon">🔌</span>
+      <div class="threat-body">
+        <strong>Remote vendor access reaching deep into OT</strong>
+        <p>Every major OT vendor — Siemens, Schneider, Rockwell, ABB — offers remote diagnostics and predictive maintenance. That means authenticated tunnels reaching directly into Level 1 or Level 2 from outside. Through your IT network. Often provisioned by the OT team without IT's knowledge.</p>
+      </div>
+    </li>
+    <li>
+      <span class="threat-icon">☁️</span>
+      <div class="threat-body">
+        <strong>Cloud-connected OT platforms</strong>
+        <p>IIoT platforms now push data directly from edge gateways at Level 0/1 into cloud infrastructure — Azure IoT Hub, AWS IoT Greengrass — completely bypassing the Purdue stack. They're legitimate. They're valuable. And they create a direct pipe from your most sensitive operational layer to the internet.</p>
+      </div>
+    </li>
+  </ul>
+
+  <p>What does the <em>actual</em> traffic look like in a typical large enterprise?</p>
+
+  <div class="diagram-wrap">
+    <div class="diagram-header">
+      <span class="d-dot" style="background:#e05252"></span>
+      <span class="d-dot" style="background:#f0a500"></span>
+      <span class="d-dot" style="background:#50c878"></span>
+      <span class="diagram-title">FIGURE 02 — Real-World Traffic Flows (what your network actually looks like)</span>
+    </div>
+    <div class="diagram-body">
+      <div class="mermaid">
+flowchart LR
+    subgraph OT["🟢  OT Environment"]
+        PLC["PLC / RTU\nLevel 1"]
+        SCADA["SCADA / HMI\nLevel 2"]
+        HIST["Historian\nLevel 3"]
+    end
+
+    subgraph IT["🔵  IT Environment"]
+        ERP["SAP / ERP"]
+        AD["Active Directory"]
+        SIEM["SIEM / SOC"]
+    end
+
+    subgraph EXT["🔴  External"]
+        VENDOR["OEM Vendor\nRemote Access"]
+        CLOUD["IIoT Cloud\nAzure / AWS"]
+    end
+
+    PLC -- "Live sensor stream" --> CLOUD
+    SCADA -- "OPC-UA / Modbus\n⚠️ often unencrypted" --> HIST
+    HIST -- "PI Connector / REST API" --> ERP
+    ERP -- "Auth queries" --> AD
+    AD -. "Domain trust\n⚠️ bypasses segmentation" .-> SCADA
+    VENDOR -- "VPN tunnel\n⚠️ direct to L1/L2" --> PLC
+    HIST -- "Log forwarding" --> SIEM
+
+    style OT fill:#0d1a0d,color:#90d890,stroke:#2a5a2a
+    style IT fill:#0d1428,color:#88b4f0,stroke:#1e3a6e
+    style EXT fill:#1a0d0d,color:#f08888,stroke:#5a2a2a
+      </div>
+    </div>
+  </div>
+
+  <p>Look at that. <strong>Active Directory — an IT system — has a trust relationship with SCADA systems.</strong> Vendor VPNs terminate inside the OT zone. Cloud gateways reach into Level 0. The clean horizontal bands of Purdue are now a web of vertical dependencies.</p>
+
+  <p>The DMZ didn't disappear. It just became irrelevant in many of the flows that matter most.</p>
+
+  <!-- Section 3 -->
+  <div class="section-label">Section 03</div>
+  <h2>Why This Is a Security Problem, Not Just an Architecture One</h2>
+
+  <h3>Lateral Movement Is Now Cross-Domain</h3>
+
+  <p>The assumption behind OT security has always been air gap or near-air gap. Compromise IT, and you still can't reach the plant floor without jumping multiple segmented boundaries. That assumption evaporated the moment Active Directory became the identity backbone for OT systems too.</p>
+
+  <div class="callout critical">
+    <div class="hazard-tape"></div>
+    <div class="callout-inner">
+      <div class="callout-title">⚠ Critical Threat Pattern</div>
+      <p>If an attacker compromises a domain admin account — through phishing, credential stuffing, or a misconfigured service account — they may now have a direct path into SCADA. That is not an OT vulnerability. <strong>That is an IT vulnerability with OT consequences.</strong> This is exactly how INDUSTROYER2 and TRITON-class attacks operate: IT foothold first, OT disruption second, lateral path in between.</p>
+    </div>
+  </div>
+
+  <h3>Vendor Remote Access Is Unmanaged Privileged Access</h3>
+
+  <p>Most OT vendor access is handled via permanent VPN credentials, shared accounts, or mechanisms that would never pass an IT PAM audit. No session recording. No time-bound access. No MFA. Credentials that haven't rotated in years.</p>
+
+  <p>In IT, we solved this (mostly) with CyberArk, BeyondTrust, or Delinea. In OT, the vendor says "we need persistent access to monitor the system" and the plant engineer says yes — because uptime matters more than access policy. That tradeoff is understandable. It is also a standing invitation to an attacker.</p>
+
+  <h3>Protocol Opacity</h3>
+
+  <p>OT protocols — Modbus, DNP3, PROFINET, EtherNet/IP — were designed for reliability, not security. No authentication. No encryption. No notion of identity. Your SIEM ingests Windows event logs beautifully. It is effectively blind to a malicious Modbus write register command telling a pump to operate outside its safe range.</p>
+
+  <div class="callout warn">
+    <div class="callout-title">⚡ The Visibility Gap</div>
+    <p>You cannot inspect what you cannot understand. Standard IT security tooling sees OT traffic as opaque noise. The attacker who knows Modbus is operating in a space your monitoring cannot reach.</p>
+  </div>
+
+  <!-- Section 4 -->
+  <div class="section-label">Section 04</div>
+  <h2>What a Realistic Security Architecture Looks Like</h2>
+
+  <p>Scrapping the Purdue Model entirely is not the answer. IEC 62443 remains the right compliance framework for industrial environments, and its zone-and-conduit model is still sound. <strong>The mistake is using it as a network diagram rather than a security policy framework.</strong></p>
+
+  <p>Here's what a mature OT/IT convergence security posture actually requires:</p>
+
+  <div class="diagram-wrap">
+    <div class="diagram-header">
+      <span class="d-dot" style="background:#e05252"></span>
+      <span class="d-dot" style="background:#f0a500"></span>
+      <span class="d-dot" style="background:#50c878"></span>
+      <span class="diagram-title">FIGURE 03 — Enforcement-Layered Architecture (what you should build)</span>
+    </div>
+    <div class="diagram-body">
+      <div class="mermaid">
+flowchart TD
+    subgraph REMOTE["🔴  Remote Access"]
+        VENDOR2["Vendor Access\nTime-bound · MFA · Recorded"]
+    end
+
+    subgraph ENFORCE["🟡  Enforcement Layer"]
+        PAM["PAM Gateway\nSession Recording"]
+        IDS["OT-Aware IDS\nClaroty · Dragos · Nozomi"]
+        FW["NGFW\nOT Protocol Inspection"]
+        DATADIODE["Unidirectional Gateway\nData Diode"]
+    end
+
+    subgraph OT2["🟢  Secured OT Zone"]
+        SENSOR["Field Devices"]
+        PLC2["PLCs / RTUs"]
+        SCADA2["SCADA / DCS"]
+        HIST2["Historian"]
+    end
+
+    subgraph IT2["🔵  Secured IT Zone"]
+        ERP2["ERP / Business Apps"]
+        AD2["Active Directory\nTiered Admin Model"]
+        SIEM2["SIEM / SOC"]
+    end
+
+    SENSOR --> PLC2 --> SCADA2 --> HIST2
+    HIST2 --> DATADIODE --> ERP2
+    SCADA2 --> IDS --> SIEM2
+    VENDOR2 --> PAM --> FW --> PLC2
+    AD2 --> FW
+
+    style REMOTE fill:#1a0d0d,color:#f08888,stroke:#5a2a2a
+    style ENFORCE fill:#1a1200,color:#f0d080,stroke:#7a5a00
+    style OT2 fill:#0d1a0d,color:#90d890,stroke:#2a5a2a
+    style IT2 fill:#0d1428,color:#88b4f0,stroke:#1e3a6e
+      </div>
+    </div>
+  </div>
+
+  <p>The key shifts from a traditional Purdue implementation:</p>
+
+  <div class="fix-grid">
+    <div class="fix-item">
+      <span class="fix-label">Data Diodes</span>
+      <div class="fix-text">
+        <strong>Replace bidirectional DMZ firewalls for historian-to-ERP flows</strong>
+        <p>Data flows one way. Period. No return path means no attack path. Waterfall Security and Owl Cyber Defense are the leading vendors here.</p>
+      </div>
+    </div>
+    <div class="fix-item">
+      <span class="fix-label">OT-Aware IDS</span>
+      <div class="fix-text">
+        <strong>Passive monitoring that actually understands OT protocols</strong>
+        <p>Claroty, Dragos, and Nozomi Networks passively baseline normal operational behavior and alert on anomalies — a PLC queried by an unfamiliar IP, a new Modbus function code, unusual polling frequency. Your Splunk instance cannot do this.</p>
+      </div>
+    </div>
+    <div class="fix-item">
+      <span class="fix-label">PAM for OT</span>
+      <div class="fix-text">
+        <strong>Every vendor session time-limited, MFA-protected, and recorded</strong>
+        <p>Not because the vendor is untrustworthy — because their credentials might be compromised and you need to know. CyberArk and Cyolo have OT-specific implementations worth evaluating.</p>
+      </div>
+    </div>
+    <div class="fix-item">
+      <span class="fix-label">Tiered AD</span>
+      <div class="fix-text">
+        <strong>Separate OT-touching admin accounts from general IT admin accounts</strong>
+        <p>A Tier 0 domain admin should have zero business authenticating against a SCADA system. Enforce that at the identity layer, not just the network layer.</p>
+      </div>
+    </div>
+    <div class="fix-item">
+      <span class="fix-label">Conditional Flows</span>
+      <div class="fix-text">
+        <strong>Policy-enforced north-south flows, not open conduits</strong>
+        <p>That PI Connector pulling historian data into SAP? It should be a known service account, on a specific port, to a specific destination, during business hours. Anything outside that envelope triggers an alert.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 5 -->
+  <div class="section-label">Section 05</div>
+  <h2>The Compliance Conversation</h2>
+
+  <p>Here's where practitioners get squeezed: your IEC 62443 audit still expects to see Purdue-compliant zone documentation. Your network probably doesn't match it.</p>
+
+  <p>The pragmatic answer is to document <em>actual</em> zones — not aspirational ones — map the real conduits (including the ones the OT team provisioned without telling you), and classify each deviation by risk. Not every bypass is a critical vulnerability. A read-only data diode feeding a historian to ERP is low risk. An always-on VPN with shared credentials reaching Level 1 is not.</p>
+
+  <div class="callout info">
+    <div class="callout-title">ℹ UAE Regulatory Context</div>
+    <p>The UAE's NESA and NCA frameworks, along with ADNOC sector-specific security standards in the energy space, are increasingly aligned with IEC 62443 zone requirements. Regulators are catching up. Get ahead of it by documenting what's real rather than defending what's theoretical.</p>
+  </div>
+
+  <!-- Closing -->
+  <div class="closing">
+    <p>The Purdue Model isn't wrong. It's incomplete — and using an incomplete model as your security foundation is its own kind of vulnerability.</p>
+
+    <p>OT/IT convergence is not a future problem. It's running live in your environment right now, whether your architecture diagram reflects it or not. The ERP pulling historian data, the vendor VPN, the IIoT edge gateway — they're all there. <strong>Pretending the Purdue boundaries hold is exactly what an attacker is counting on.</strong></p>
+
+    <p>The networks that get this right don't abandon the zone model. They layer enforcement on top of observed reality — using OT-aware monitoring, identity-anchored access control, and unidirectional flows where bidirectional ones aren't justified.</p>
+
+    <p style="margin-top:28px; font-size:20px; font-weight:600; color:var(--text-head);">Draw the network you actually have. Secure <em>that</em> one.</p>
+
+    <div class="author-line">
+      <div class="author-avatar">🛡</div>
+      <div class="author-info">
+        <div class="author-name">Network Security Engineer</div>
+        <div class="author-role">15+ years · Enterprise Networks · OT/IT Security · Abu Dhabi, UAE</div>
+      </div>
+    </div>
+  </div>
+
+</article>
+
+<footer>
+  <span>OT/IT CONVERGENCE SECURITY</span> &nbsp;·&nbsp; <span>IEC 62443</span> &nbsp;·&nbsp; <span>PURDUE MODEL ANALYSIS</span>
+</footer>
+
+<script>
+  // Reading progress bar
+  window.addEventListener('scroll', () => {
+    const doc = document.documentElement;
+    const scrolled = doc.scrollTop / (doc.scrollHeight - doc.clientHeight);
+    document.getElementById('progress').style.width = (scrolled * 100) + '%';
+  });
+
+  // Mermaid init
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      darkMode: true,
+      background: '#0f1927',
+      primaryColor: '#1e3a5f',
+      primaryTextColor: '#d4dce8',
+      primaryBorderColor: '#2a4a7f',
+      lineColor: '#4a9eff',
+      secondaryColor: '#152035',
+      tertiaryColor: '#0f1927',
+      edgeLabelBackground: '#0f1927',
+      clusterBkg: '#0f1927',
+      titleColor: '#d4dce8',
+      nodeTextColor: '#d4dce8',
+    },
+    flowchart: {
+      htmlLabels: true,
+      curve: 'basis',
+      padding: 20,
+    }
+  });
+</script>
+</body>
+</html>

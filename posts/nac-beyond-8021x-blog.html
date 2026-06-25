@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NAC Beyond 802.1X — Contextual Posture in a BYOD/IoT World</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;1,7..72,400&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #0c1018;
+  --bg-mid:      #111826;
+  --bg-card:     #141d2b;
+  --bg-raise:    #1a2438;
+  --teal:        #00d4aa;
+  --teal-dim:    #004d3d;
+  --teal-glow:   #00d4aa44;
+  --violet:      #8b78ff;
+  --violet-dim:  #2d2060;
+  --amber:       #f5a623;
+  --danger:      #ff5f5f;
+  --text:        #b8cce0;
+  --text-bright: #e8f0f8;
+  --text-dim:    #5a7090;
+  --border:      #1e2d42;
+  --border-mid:  #243450;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Literata', Georgia, serif;
+  font-size: 17.5px;
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Progress ── */
+#progress {
+  position: fixed; top: 0; left: 0;
+  height: 2px; width: 0%;
+  background: linear-gradient(90deg, var(--teal), var(--violet));
+  z-index: 999;
+  transition: width 0.1s linear;
+}
+
+/* ═══════════════ HERO ═══════════════ */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 80px 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Grid backdrop */
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 0.35;
+}
+
+/* Radial teal glow */
+.hero::after {
+  content: '';
+  position: absolute;
+  top: -20%; left: 50%;
+  transform: translateX(-50%);
+  width: 900px; height: 600px;
+  background: radial-gradient(ellipse, #00d4aa14 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.hero-inner {
+  position: relative;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 60px;
+  align-items: center;
+}
+
+/* Left: text */
+.hero-text {}
+
+.hero-tag {
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hero-tag::before { content: '>_'; color: var(--teal-dim); }
+
+.hero h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(36px, 4.5vw, 62px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  color: var(--text-bright);
+  margin-bottom: 24px;
+}
+.hero h1 .teal   { color: var(--teal); }
+.hero h1 .violet { color: var(--violet); }
+
+.hero-sub {
+  font-family: 'Literata', serif;
+  font-size: 18px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  max-width: 480px;
+  margin-bottom: 40px;
+}
+
+.hero-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pill {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding: 5px 12px;
+  border: 1px solid var(--border-mid);
+  border-radius: 2px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+/* ── Right: Device Scanner ── */
+.scanner-widget {
+  background: var(--bg-card);
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.scanner-top-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--border);
+}
+.s-dot { width: 8px; height: 8px; border-radius: 50%; }
+.scanner-top-bar-title {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  margin-left: 4px;
+}
+
+.scanner-body {
+  padding: 20px 16px;
+  position: relative;
+}
+
+/* Scan line */
+.scan-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--teal), transparent);
+  box-shadow: 0 0 12px var(--teal);
+  animation: scanDown 3s ease-in-out infinite;
+  z-index: 2;
+  pointer-events: none;
+}
+@keyframes scanDown {
+  0%   { top: 20px;  opacity: 0; }
+  5%   { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { top: calc(100% - 20px); opacity: 0; }
+}
+
+/* Device rows */
+.device-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.device-row:last-child { border-bottom: none; }
+
+.device-icon { font-size: 18px; flex-shrink: 0; width: 28px; text-align: center; }
+.device-info { flex: 1; min-width: 0; }
+.device-name {
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--text-bright);
+  letter-spacing: 0.05em;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.device-type {
+  font-family: 'Fira Code', monospace;
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.status-badge {
+  font-family: 'Fira Code', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+.status-pass    { background: #00332a; color: var(--teal);   border: 1px solid var(--teal-dim); }
+.status-fail    { background: #330d0d; color: var(--danger); border: 1px solid #5a2020; }
+.status-unknown { background: #1e1a3a; color: var(--violet); border: 1px solid var(--violet-dim); }
+.status-warn    { background: #332200; color: var(--amber);  border: 1px solid #5a3a00; }
+
+.scanner-footer {
+  padding: 10px 16px;
+  background: var(--bg-raise);
+  border-top: 1px solid var(--border);
+  font-family: 'Fira Code', monospace;
+  font-size: 9px;
+  color: var(--teal);
+  letter-spacing: 0.1em;
+  display: flex;
+  justify-content: space-between;
+}
+.blink {
+  animation: blink 1.1s step-end infinite;
+}
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+/* ═══════════════ ARTICLE ═══════════════ */
+.article {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 88px 24px 40px;
+}
+
+p { margin-bottom: 22px; }
+strong { color: var(--text-bright); font-weight: 600; font-style: normal; }
+em { font-style: italic; color: var(--text-bright); }
+
+/* ── Section heading ── */
+.sec-head {
+  margin-top: 72px;
+  margin-bottom: 28px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sec-tag {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--teal);
+}
+h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+h3 {
+  font-family: 'Syne', sans-serif;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin-top: 44px;
+  margin-bottom: 14px;
+  padding-left: 14px;
+  border-left: 3px solid var(--teal);
+}
+
+/* ── Diagram container ── */
+.diagram-wrap {
+  margin: 48px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.diagram-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--border);
+}
+.d-dot  { width: 8px; height: 8px; border-radius: 50%; }
+.d-title {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  flex: 1;
+}
+.diagram-body { padding: 28px 20px; overflow-x: auto; }
+.diagram-body .mermaid { display: flex; justify-content: center; }
+
+/* ── Callouts ── */
+.callout {
+  margin: 36px 0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.callout-inner {
+  padding: 20px 24px;
+  border: 1px solid;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+}
+.callout-stripe {
+  height: 3px;
+}
+.callout-label {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+.callout p { margin-bottom: 0; font-size: 15.5px; line-height: 1.65; }
+
+.callout.teal .callout-stripe { background: var(--teal); }
+.callout.teal .callout-inner  { background: #001f18; border-color: var(--teal-dim); }
+.callout.teal .callout-label  { color: var(--teal); }
+
+.callout.violet .callout-stripe { background: var(--violet); }
+.callout.violet .callout-inner  { background: #12102a; border-color: var(--violet-dim); }
+.callout.violet .callout-label  { color: var(--violet); }
+
+.callout.danger .callout-stripe { background: var(--danger); }
+.callout.danger .callout-inner  { background: #1a0a0a; border-color: #5a2020; }
+.callout.danger .callout-label  { color: var(--danger); }
+
+/* ── Timeline — the 802.1X evolution ── */
+.timeline {
+  margin: 40px 0;
+  position: relative;
+  padding-left: 32px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px; top: 8px; bottom: 8px;
+  width: 1px;
+  background: linear-gradient(to bottom, var(--teal), var(--violet));
+}
+.tl-item {
+  position: relative;
+  margin-bottom: 36px;
+}
+.tl-item:last-child { margin-bottom: 0; }
+.tl-dot {
+  position: absolute;
+  left: -28px;
+  top: 4px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--teal);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 8px var(--teal-glow);
+}
+.tl-item:nth-child(2) .tl-dot { background: #5ad4b0; }
+.tl-item:nth-child(3) .tl-dot { background: var(--violet); box-shadow: 0 0 8px #8b78ff44; }
+.tl-item:last-child   .tl-dot { background: var(--amber); box-shadow: 0 0 8px #f5a62344; }
+.tl-year {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.tl-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin-bottom: 6px;
+}
+.tl-desc {
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ── Comparison cards ── */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin: 36px 0;
+}
+.cg-header {
+  padding: 10px 16px;
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.cg-old  { background: #1a0a0a; color: var(--danger); }
+.cg-new  { background: #001f18; color: var(--teal); }
+.cg-row-old {
+  background: #130808;
+  border: 1px solid #2a1010;
+  padding: 13px 16px;
+  font-size: 14px;
+  color: #c08080;
+  line-height: 1.5;
+}
+.cg-row-new {
+  background: #00130e;
+  border: 1px solid #003328;
+  padding: 13px 16px;
+  font-size: 14px;
+  color: #80c8b8;
+  line-height: 1.5;
+}
+@media (max-width: 580px) {
+  .compare-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Device class table ── */
+.device-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 36px 0;
+  font-size: 14px;
+}
+.device-table th {
+  font-family: 'Fira Code', monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  text-align: left;
+  background: var(--bg-raise);
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border-mid);
+}
+.device-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  line-height: 1.5;
+}
+.device-table tr:last-child td { border-bottom: none; }
+.device-table tr:hover td { background: var(--bg-card); }
+.risk-high   { color: var(--danger); font-family: 'Fira Code', monospace; font-size: 11px; }
+.risk-med    { color: var(--amber);  font-family: 'Fira Code', monospace; font-size: 11px; }
+.risk-low    { color: var(--teal);   font-family: 'Fira Code', monospace; font-size: 11px; }
+
+/* ── Implementation list ── */
+.impl-list {
+  list-style: none;
+  margin: 32px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.impl-item {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.impl-item:first-child { border-radius: 4px 4px 0 0; }
+.impl-item:last-child  { border-radius: 0 0 4px 4px; }
+.impl-item:hover { border-color: var(--border-mid); }
+.impl-num {
+  background: var(--bg-raise);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Fira Code', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--teal);
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.impl-body { padding: 16px 18px; }
+.impl-body strong {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  display: block;
+  margin-bottom: 5px;
+}
+.impl-body p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.55;
+}
+
+/* ── Pull quote ── */
+.pull {
+  margin: 52px 0;
+  padding: 28px 32px;
+  border-left: 3px solid var(--violet);
+  background: #0d0c1e;
+}
+.pull p {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-bright);
+  line-height: 1.4;
+  margin-bottom: 0;
+  letter-spacing: -0.01em;
+}
+.pull p .v { color: var(--violet); }
+
+/* ── Vendor callout ── */
+.vendor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 32px 0;
+}
+.vendor-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 16px 18px;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.vendor-card:hover {
+  border-color: var(--teal);
+  transform: translateY(-2px);
+}
+.vendor-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin-bottom: 6px;
+}
+.vendor-desc {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  letter-spacing: 0.03em;
+}
+
+/* ── Closing ── */
+.closing {
+  margin-top: 80px;
+  padding: 56px 0 0;
+  border-top: 1px solid var(--border);
+}
+.closing p {
+  font-size: 18px;
+  line-height: 1.75;
+  margin-bottom: 20px;
+}
+.kicker {
+  margin-top: 40px;
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-bright);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+.kicker .t { color: var(--teal); }
+
+.author-line {
+  margin-top: 52px;
+  padding: 20px 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.author-avatar {
+  width: 40px; height: 40px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, var(--teal-dim), var(--violet-dim));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-mid);
+}
+.author-name { font-family: 'Fira Code', monospace; font-size: 12px; color: var(--text-bright); }
+.author-role { font-family: 'Fira Code', monospace; font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+
+/* ── Footer ── */
+footer {
+  margin-top: 80px;
+  padding: 28px 24px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .hero-inner {
+    grid-template-columns: 1fr;
+  }
+  .scanner-widget { max-width: 480px; }
+}
+@media (max-width: 580px) {
+  .hero h1 { font-size: 32px; }
+  .hero-sub { font-size: 16px; }
+  h2 { font-size: 23px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scan-line { animation: none; top: 50%; opacity: 0.3; }
+  .blink { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<header class="hero">
+  <div class="hero-inner">
+
+    <!-- Left: text -->
+    <div class="hero-text">
+      <div class="hero-tag">NAC · BYOD · IoT Security · Zero Trust</div>
+      <h1>
+        802.1X Got You<br>
+        to the <span class="teal">Gate</span>.<br>
+        Now What About<br>
+        Everything <span class="violet">Inside</span>?
+      </h1>
+      <p class="hero-sub">Port-based NAC was designed for a world of managed laptops on fixed desks. Your network now has 47 device types, half of which can't run a supplicant. Time to rethink what "network access control" actually means.</p>
+      <div class="hero-pills">
+        <span class="pill">802.1X</span>
+        <span class="pill">Continuous Auth</span>
+        <span class="pill">Posture Assessment</span>
+        <span class="pill">IoT Profiling</span>
+        <span class="pill">BYOD</span>
+        <span class="pill">~12 min read</span>
+      </div>
+    </div>
+
+    <!-- Right: Live scanner widget -->
+    <div class="scanner-widget">
+      <div class="scanner-top-bar">
+        <span class="s-dot" style="background:#ff5f5f"></span>
+        <span class="s-dot" style="background:#f5a623"></span>
+        <span class="s-dot" style="background:#00d4aa"></span>
+        <span class="scanner-top-bar-title">NAC_POSTURE_SCAN.exe — LIVE</span>
+      </div>
+
+      <div class="scanner-body">
+        <div class="scan-line"></div>
+
+        <div class="device-row">
+          <span class="device-icon">💻</span>
+          <div class="device-info">
+            <span class="device-name">CORP-LT-UAE-0441</span>
+            <span class="device-type">Managed Laptop · Win 11 · CrowdStrike ✓</span>
+          </div>
+          <span class="status-badge status-pass">PASS</span>
+        </div>
+
+        <div class="device-row">
+          <span class="device-icon">📱</span>
+          <div class="device-info">
+            <span class="device-name">iPhone [unregistered]</span>
+            <span class="device-type">Personal iOS · MDM: None · No cert</span>
+          </div>
+          <span class="status-badge status-warn">GUEST</span>
+        </div>
+
+        <div class="device-row">
+          <span class="device-icon">📷</span>
+          <div class="device-info">
+            <span class="device-name">IP-CAM-LOBBY-03</span>
+            <span class="device-type">IoT · No supplicant · Hikvision OUI</span>
+          </div>
+          <span class="status-badge status-unknown">PROFILED</span>
+        </div>
+
+        <div class="device-row">
+          <span class="device-icon">🏭</span>
+          <div class="device-info">
+            <span class="device-name">PLC-PROC-LINE-7</span>
+            <span class="device-type">OT Device · Modbus · Fixed MAC</span>
+          </div>
+          <span class="status-badge status-unknown">PROFILED</span>
+        </div>
+
+        <div class="device-row">
+          <span class="device-icon">🖨️</span>
+          <div class="device-info">
+            <span class="device-name">HP-LJ-FLOOR2-Unknown</span>
+            <span class="device-type">Printer · Stale cert · Patch: 847d ago</span>
+          </div>
+          <span class="status-badge status-fail">QUARANTINE</span>
+        </div>
+
+        <div class="device-row">
+          <span class="device-icon">⚙️</span>
+          <div class="device-info">
+            <span class="device-name">DEVICE_3a:f2:c1:...</span>
+            <span class="device-type">Unknown OUI · No profile match</span>
+          </div>
+          <span class="status-badge status-fail">BLOCKED</span>
+        </div>
+      </div>
+
+      <div class="scanner-footer">
+        <span>6 DEVICES EVALUATED</span>
+        <span><span class="blink">▋</span> SCANNING...</span>
+      </div>
+    </div>
+
+  </div>
+</header>
+
+<!-- ═══════════════ ARTICLE ═══════════════ -->
+<article class="article">
+
+  <p>When 802.1X was ratified in 2001, the threat model was simple: keep unauthorized users off the wired LAN. The "user" in question was a person with a laptop, and the "authentication" was a username and password or a certificate. The model worked because the network was also simple — managed endpoints, known users, predictable behavior.</p>
+
+  <p>Walk through any enterprise network today and count device types. You'll find managed laptops and unmanaged personal phones. IP cameras and smart TVs in conference rooms. Building management sensors, industrial PLCs, medical devices, VoIP handsets, network printers with decade-old firmware. Most of these devices <strong>cannot run an 802.1X supplicant</strong>. Several of them cannot be patched. A few of them shouldn't even be touching your corporate network — but they are, because someone plugged them in and NAC waved them through on a MAC bypass.</p>
+
+  <p>This is the gap. Port-based admission was never the hard part of network access control. The hard part is what happens after admission — continuous verification, behavioral monitoring, dynamic policy enforcement based on real-time posture. Most NAC deployments stop at the gate. The rest of the network assumes whatever got past 802.1X can be trusted.</p>
+
+  <p>It cannot.</p>
+
+  <!-- Section: Evolution -->
+  <div class="sec-head">
+    <span class="sec-tag">Context</span>
+    <h2>How NAC Evolved — and Where It Stopped</h2>
+  </div>
+
+  <p>Understanding why most NAC deployments are incomplete requires looking at where the technology came from and the assumptions baked into each generation.</p>
+
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">Early 2000s</div>
+      <div class="tl-title">Port-Based NAC — 802.1X</div>
+      <p class="tl-desc">Authentication at the switch port. EAP methods (PEAP, EAP-TLS) verify identity before granting access. Works beautifully for managed endpoints with supplicants and certificates. Fails immediately for anything that can't authenticate.</p>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">~2008–2014</div>
+      <div class="tl-title">Posture Assessment Added</div>
+      <p class="tl-desc">Cisco NAC Appliance, Microsoft NAP. Check endpoint health at admission: AV installed? Patches current? If not, redirect to remediation VLAN. Admission-time posture only — once you're in, nobody checks again until the next connection.</p>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">~2015–2019</div>
+      <div class="tl-title">Profiling and BYOD Handling</div>
+      <p class="tl-desc">Cisco ISE, Aruba ClearPass. Device profiling via DHCP fingerprinting, HTTP User-Agent, OUI lookup. BYOD portals, MDM integration, certificate provisioning. MAC Authentication Bypass (MAB) for non-supplicant devices — a necessary workaround that became a widespread security hole.</p>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-year">Now — and the gap</div>
+      <div class="tl-title">Where Most Deployments Stall</div>
+      <p class="tl-desc">The tooling exists for continuous post-admission monitoring, behavioral anomaly detection, and dynamic policy enforcement. Most enterprises haven't deployed it. They authenticated the device at the door and assumed the rest would be fine. IoT and OT devices exploded into the network without a control plane that could handle them.</p>
+    </div>
+  </div>
+
+  <!-- Section: The Real Problems -->
+  <div class="sec-head">
+    <span class="sec-tag">The Problems</span>
+    <h2>Three Failures That Define Modern NAC Gaps</h2>
+  </div>
+
+  <h3>1. MAC Authentication Bypass Is Not Authentication</h3>
+
+  <p>MAB was designed as a pragmatic workaround for devices that can't run 802.1X — printers, IP phones, cameras. The switch sends the device's MAC address to a RADIUS server, which checks it against a database, and grants access. No credential challenge. No certificate. No proof that the device is what it claims to be.</p>
+
+  <div class="callout danger">
+    <div class="callout-stripe"></div>
+    <div class="callout-inner">
+      <div class="callout-label">⚠ Critical Flaw</div>
+      <p>MAC addresses are trivially spoofable. An attacker with a Kali Linux VM can clone the MAC of any device visible on the network — a printer, a camera, a VoIP phone — and the MAB check will grant them access to the VLAN assigned to that device class. This is not a theoretical attack. It takes about 30 seconds. If your IoT VLAN has any path to corporate resources, you've been bypassed.</p>
+    </div>
+  </div>
+
+  <h3>2. Admission-Time Posture Is a Snapshot, Not a State</h3>
+
+  <p>Classic NAC posture checks happen at connection time. AV running? Patches current? Disk encrypted? The device passes, gets full access, and nobody checks again until it reconnects — which on a wired laptop might be weeks later.</p>
+
+  <p>Consider what can change between admission and the next check:</p>
+
+  <ul style="margin: 0 0 22px 24px; color: var(--text); line-height: 2;">
+    <li>AV signatures go stale (or the user disables AV entirely)</li>
+    <li>A critical patch gets uninstalled by a failed update</li>
+    <li>A rogue application gets installed with admin rights</li>
+    <li>A browser extension starts proxying traffic</li>
+    <li>The device gets infected — and the infection stays dormant until lateral movement begins</li>
+  </ul>
+
+  <p>Every one of these changes the device's risk profile. None of them trigger a re-evaluation under classic NAC. <strong>The device is trusted because it was trusted when it connected, not because it's trustworthy now.</strong></p>
+
+  <div class="pull">
+    <p>"Admission-time posture gives you a <span class="v">photograph</span> of the device. You need a <span class="v">live feed</span>."</p>
+  </div>
+
+  <h3>3. IoT and OT Devices Have No Identity Plane</h3>
+
+  <p>A managed laptop has an Active Directory identity, a certificate, an MDM enrollment, an EDR agent, and detailed telemetry. An IP camera has a MAC address and a firmware version — if you're lucky. A PLC has a fixed IP and nothing else.</p>
+
+  <p>These devices cannot prove who they are. They cannot report their own posture. They cannot be quarantined via agent. Your NAC needs to handle them entirely from the outside — profiling, behavioral baselining, network-level policy — with no cooperation from the device itself.</p>
+
+  <div class="diagram-wrap">
+    <div class="diagram-header">
+      <span class="d-dot" style="background:#ff5f5f"></span>
+      <span class="d-dot" style="background:#f5a623"></span>
+      <span class="d-dot" style="background:#00d4aa"></span>
+      <span class="d-title">Figure 01 — Device Identity Capability by Type</span>
+    </div>
+    <div class="diagram-body">
+      <div class="mermaid">
+%%{init: {'theme':'dark'}}%%
+quadrantChart
+    title Device Identity vs Controllability
+    x-axis "Low Identity Evidence" --> "High Identity Evidence"
+    y-axis "Hard to Control" --> "Easy to Control"
+    quadrant-1 Full control
+    quadrant-2 Observable, not controllable
+    quadrant-3 Blind spot
+    quadrant-4 Controllable, low trust
+    Managed Laptop: [0.85, 0.90]
+    Corp Mobile MDM: [0.75, 0.80]
+    BYOD Phone: [0.40, 0.55]
+    IP Camera: [0.20, 0.20]
+    Smart TV: [0.15, 0.15]
+    PLC/RTU: [0.10, 0.10]
+    Network Printer: [0.25, 0.35]
+    VoIP Phone: [0.45, 0.60]
+      </div>
+    </div>
+  </div>
+
+  <p>The bottom-left quadrant — low identity evidence, hard to control — is where the majority of device growth is happening. IoT, OT, building management, physical security systems. These devices are proliferating faster than any NAC policy can keep up with using traditional admission-based thinking.</p>
+
+  <!-- Section: What Good Looks Like -->
+  <div class="sec-head">
+    <span class="sec-tag">Architecture</span>
+    <h2>Contextual NAC: What It Actually Takes</h2>
+  </div>
+
+  <p>Contextual posture doesn't replace 802.1X — it extends enforcement beyond the admission event into a continuous loop of observe, assess, and enforce.</p>
+
+  <div class="diagram-wrap">
+    <div class="diagram-header">
+      <span class="d-dot" style="background:#ff5f5f"></span>
+      <span class="d-dot" style="background:#f5a623"></span>
+      <span class="d-dot" style="background:#00d4aa"></span>
+      <span class="d-title">Figure 02 — Continuous Authorization Architecture</span>
+    </div>
+    <div class="diagram-body">
+      <div class="mermaid">
+flowchart TD
+    subgraph ADMIT["Admission Phase"]
+        A1["802.1X / MAB\nIdentity Check"]
+        A2["Initial Posture\nAssessment"]
+        A3["Device Profiling\nDHCP · OUI · HTTP · SNMP"]
+        A4["Role Assignment\nVLAN · dACL · SGT"]
+    end
+
+    subgraph MONITOR["Continuous Phase"]
+        M1["Behavioral Baseline\nTraffic flow · Protocol · Volume"]
+        M2["Telemetry Streams\nEDR · MDM · SIEM · NetFlow"]
+        M3["Anomaly Detection\nNew dest · Protocol shift · Off-hours"]
+    end
+
+    subgraph ENFORCE["Dynamic Enforcement"]
+        E1["Policy Engine\nCisco ISE · Aruba ClearPass"]
+        E2["CoA — Change of Authorization\nRe-auth · VLAN move · Quarantine"]
+        E3["Orchestration\nFirewall update · SD-Access tag · Block"]
+    end
+
+    A1 --> A2 --> A3 --> A4
+    A4 --> M1
+    M1 --> M2 --> M3
+    M3 --> E1 --> E2
+    E2 --> E3
+    E3 -->|"Re-evaluate"| M1
+
+    style ADMIT fill:#001a14,color:#80d8c0,stroke:#006650
+    style MONITOR fill:#0d0c20,color:#b0a0f0,stroke:#4040a0
+    style ENFORCE fill:#1a0d00,color:#f0c080,stroke:#6a4000
+      </div>
+    </div>
+  </div>
+
+  <p>The critical component here is <strong>CoA — RADIUS Change of Authorization</strong>. This is the mechanism that allows your policy engine to reach back to a connected device mid-session and change its access level without requiring a reconnection. The device is already on the network. CoA lets you move it to a quarantine VLAN, apply a more restrictive dACL, or terminate the session entirely — all triggered by a post-admission event like a posture change, an anomaly alert, or a threat intelligence hit.</p>
+
+  <p>This is how you bridge the gap between "passed admission" and "currently trustworthy."</p>
+
+  <h3>Device Profiling: Knowing What You Can't Authenticate</h3>
+
+  <p>For IoT and OT devices that can't prove identity, profiling is the only tool. A mature profiling engine builds a fingerprint from every available passive and active signal:</p>
+
+  <div class="device-table">
+    <table style="width:100%; border-collapse: collapse;">
+      <thead>
+        <tr>
+          <th>Signal</th>
+          <th>Method</th>
+          <th>What It Reveals</th>
+          <th>Reliability</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>MAC OUI</strong></td>
+          <td style="font-family:'Fira Code',monospace;font-size:12px;color:var(--text-dim)">Passive</td>
+          <td>Manufacturer (Hikvision, Siemens, HP)</td>
+          <td><span class="risk-med">MED</span></td>
+        </tr>
+        <tr>
+          <td><strong>DHCP Fingerprint</strong></td>
+          <td style="font-family:'Fira Code',monospace;font-size:12px;color:var(--text-dim)">Passive</td>
+          <td>OS type, hostname, options requested</td>
+          <td><span class="risk-low">HIGH</span></td>
+        </tr>
+        <tr>
+          <td><strong>HTTP User-Agent</strong></td>
+          <td style="font-family:'Fira Code',monospace;font-size:12px;color:var(--text-dim)">Passive</td>
+          <td>Browser, OS, app identity</td>
+          <td><span class="risk-low">HIGH</span></td>
+        </tr>
+        <tr>
+          <td><strong>SNMP sysDescr</strong></td>
+          <td style="font-family:'Fira Code',monospace;font-size:12px;color:var(--text-dim)">Active</td>
+          <td>Device model, firmware, vendor</td>
+          <td><span class="risk-low">HIGH</span></td>
+        </tr>
+        <tr>
+          <td><strong>mDNS / Bonjour</strong></td>
+          <td style="font-family:'Fira Code',monospace;font-size:12px;color:var(--text-dim)">Passive</td>
+          <td>Service type, device name</td>
+          <td><span class="risk-low">HIGH</span></td>
+        </tr>
+        <tr>
+          <td><strong>NetFlow / Traffic pattern</strong></td>
+          <td style="font-family:'Fira Code',monospace;font-size:12px;color:var(--text-dim)">Passive</td>
+          <td>Communication peers, ports, volumes</td>
+          <td><span class="risk-med">MED</span></td>
+        </tr>
+        <tr>
+          <td><strong>TCP/IP Stack Behavior</strong></td>
+          <td style="font-family:'Fira Code',monospace;font-size:12px;color:var(--text-dim)">Passive</td>
+          <td>OS fingerprint (p0f, Nmap OS detection)</td>
+          <td><span class="risk-med">MED</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The goal is a profile confident enough to assign the device to a policy group — not just a VLAN, but a specific set of permitted behaviors, destinations, and protocols. A Hikvision camera identified by OUI + DHCP pattern + mDNS service type should have a policy that allows RTSP to the VMS server and nothing else. Any deviation from that baseline triggers investigation.</p>
+
+  <div class="callout violet">
+    <div class="callout-stripe"></div>
+    <div class="callout-inner">
+      <div class="callout-label">ℹ What "Contextual" Actually Means</div>
+      <p>Context in NAC is any real-time signal beyond identity: <strong>device posture</strong> (patch level, AV, MDM compliance), <strong>user behavior</strong> (logging in from a new country, outside business hours), <strong>network behavior</strong> (talking to a new IP, unusual data volume), <strong>threat intelligence</strong> (device IP matches IOC feed), <strong>time of day</strong>, and <strong>location</strong>. A true contextual NAC policy combines these signals dynamically — not a static VLAN assignment made at admission and never revisited.</p>
+    </div>
+  </div>
+
+  <!-- Section: Implementation -->
+  <div class="sec-head">
+    <span class="sec-tag">Implementation</span>
+    <h2>Building a Contextual NAC Program — Where to Start</h2>
+  </div>
+
+  <p>The mistake most teams make is trying to flip NAC into a full contextual posture system in one project. It becomes unwieldy, breaks production, and gets rolled back. The path that works is incremental.</p>
+
+  <ol class="impl-list">
+    <li class="impl-item">
+      <div class="impl-num">01</div>
+      <div class="impl-body">
+        <strong>Full device inventory first — no exceptions</strong>
+        <p>You cannot enforce policy against devices you don't know exist. Run passive profiling in monitor-only mode for 4–6 weeks. Every unknown MAC is a risk you're currently ignoring. The number of undocumented devices in a typical enterprise network is always higher than anyone expects — usually 2–3x the managed endpoint count.</p>
+      </div>
+    </li>
+    <li class="impl-item">
+      <div class="impl-num">02</div>
+      <div class="impl-body">
+        <strong>Eliminate MAB for anything that can support certificate auth</strong>
+        <p>VoIP phones (Cisco, Poly), managed APs, and network infrastructure all support 802.1X. MAB should be reserved for genuinely uncapable devices, not used as a shortcut. Every device on MAB is an identity spoofing opportunity. Audit your MAB list and migrate everything that has a certificate store.</p>
+      </div>
+    </li>
+    <li class="impl-item">
+      <div class="impl-num">03</div>
+      <div class="impl-body">
+        <strong>Deploy CoA-capable infrastructure</strong>
+        <p>Verify your switches and WLCs support RADIUS CoA (RFC 5176). Most modern Cisco Catalyst, Aruba, and HPE infrastructure does. Without CoA, your policy engine cannot act on post-admission events — you're limited to re-auth on next connection. CoA is what turns NAC from a gate into a continuous control.</p>
+      </div>
+    </li>
+    <li class="impl-item">
+      <div class="impl-num">04</div>
+      <div class="impl-body">
+        <strong>Build behavioral baselines per device class before enforcing</strong>
+        <p>For each device profile (IP camera, PLC, managed laptop, BYOD), define what normal communication looks like: which IPs, which ports, which protocols, at what volumes, at what times. Only enforce after the baseline is stable. Enforce anomaly on deviation — not on a blocklist, which is always incomplete.</p>
+      </div>
+    </li>
+    <li class="impl-item">
+      <div class="impl-num">05</div>
+      <div class="impl-body">
+        <strong>Integrate posture signals beyond the NAC agent</strong>
+        <p>Feed MDM compliance status (Intune, Jamf), EDR health (CrowdStrike, SentinelOne), and vulnerability scanner data into the policy engine. A device whose EDR agent has been killed should trigger immediate CoA quarantine — not wait for the next 802.1X re-auth. This is the difference between reactive and continuous posture.</p>
+      </div>
+    </li>
+    <li class="impl-item">
+      <div class="impl-num">06</div>
+      <div class="impl-body">
+        <strong>IoT/OT: separate network plane, not just VLAN</strong>
+        <p>IoT devices that cannot be authenticated or patched should sit in a network segment with strict default-deny firewall policy — not just a VLAN with soft inter-VLAN ACLs. Unidirectional flows where possible. All traffic to a defined set of permitted destinations only. NAC handles admission and profiling; the firewall handles enforcement for what the NAC policy engine can't reach inside the device.</p>
+      </div>
+    </li>
+  </ol>
+
+  <!-- Vendors -->
+  <div class="sec-head">
+    <span class="sec-tag">Tooling</span>
+    <h2>Platform Landscape</h2>
+  </div>
+
+  <div class="vendor-grid">
+    <div class="vendor-card">
+      <div class="vendor-name">Cisco ISE</div>
+      <div class="vendor-desc">Market leader. Deep Cisco ecosystem integration. pxGrid for third-party context sharing. Best-in-class profiling and TrustSec SGT enforcement. Complex to operate.</div>
+    </div>
+    <div class="vendor-card">
+      <div class="vendor-name">Aruba ClearPass</div>
+      <div class="vendor-desc">Strong multi-vendor support. Excellent BYOD onboarding. Policy model is more flexible than ISE for heterogeneous environments. Common in education and healthcare.</div>
+    </div>
+    <div class="vendor-card">
+      <div class="vendor-name">Forescout</div>
+      <div class="vendor-desc">Agentless. Strongest IoT/OT device profiling in the market. Works without 802.1X infrastructure changes. Ideal when you can't control the endpoint layer.</div>
+    </div>
+    <div class="vendor-card">
+      <div class="vendor-name">Portnox</div>
+      <div class="vendor-desc">Cloud-native NAC. RADIUS-as-a-service. Lower operational overhead. Growing contextual posture capabilities. Good fit for hybrid or multi-site enterprises without on-prem RADIUS infrastructure.</div>
+    </div>
+    <div class="vendor-card">
+      <div class="vendor-name">Ivanti NAC</div>
+      <div class="vendor-desc">Tight integration with Ivanti endpoint management. Posture checks fed directly from patch and configuration data. Practical if already in the Ivanti ecosystem.</div>
+    </div>
+    <div class="vendor-card">
+      <div class="vendor-name">Nozomi / Claroty</div>
+      <div class="vendor-desc">OT-specific device profiling. Not NAC platforms per se, but feed device identity and behavioral context into ISE/ClearPass via API. Essential for OT-heavy environments.</div>
+    </div>
+  </div>
+
+  <div class="callout teal">
+    <div class="callout-stripe"></div>
+    <div class="callout-inner">
+      <div class="callout-label">ℹ Integration is the key unlock</div>
+      <p>The real value of modern NAC comes from what it integrates with — not what it does alone. ISE pulling posture from Intune + CrowdStrike + Nozomi, then enforcing via CoA and pxGrid, is a fundamentally different capability than 802.1X with a local RADIUS server. Build the integration architecture first. The NAC platform is just the enforcement point.</p>
+    </div>
+  </div>
+
+  <!-- Closing -->
+  <div class="diagram-wrap">
+    <div class="diagram-header">
+      <span class="d-dot" style="background:#ff5f5f"></span>
+      <span class="d-dot" style="background:#f5a623"></span>
+      <span class="d-dot" style="background:#00d4aa"></span>
+      <span class="d-title">Figure 03 — Contextual NAC: Full Signal Integration</span>
+    </div>
+    <div class="diagram-body">
+      <div class="mermaid">
+flowchart LR
+    subgraph SIGNALS["Context Signals"]
+        S1["MDM\nIntune / Jamf"]
+        S2["EDR\nCrowdStrike / S1"]
+        S3["Vuln Scanner\nTenable / Qualys"]
+        S4["OT Profiler\nNozomi / Claroty"]
+        S5["Threat Intel\nIOC Feeds"]
+        S6["IdP\nAzure AD / Okta"]
+    end
+
+    subgraph ENGINE["Policy Engine"]
+        PE["Cisco ISE /\nAruba ClearPass\n\nContinuous Policy Eval"]
+    end
+
+    subgraph ENFORCE2["Enforcement Points"]
+        F1["Switch\nVLAN / dACL / CoA"]
+        F2["WLC / AP\nWireless policy"]
+        F3["Firewall\nDynamic rules"]
+        F4["SD-Access\nSGT enforcement"]
+    end
+
+    S1 & S2 & S3 & S4 & S5 & S6 --> PE
+    PE --> F1 & F2 & F3 & F4
+
+    style SIGNALS fill:#0a1428,color:#88b4f0,stroke:#1e3a6e
+    style ENGINE fill:#001a14,color:#80d8c0,stroke:#006650
+    style ENFORCE2 fill:#1a1200,color:#f0c080,stroke:#6a4000
+      </div>
+    </div>
+  </div>
+
+  <div class="closing">
+    <p>802.1X isn't the problem. It's a solid foundation — cryptographically strong identity at the port, where the device proves itself before joining the network. The problem is treating it as the complete solution rather than the starting line.</p>
+
+    <p>Every device that joins your network today should be continuously evaluated against a policy that reflects its current state, not the state it was in at the moment it connected. <strong>The threat landscape doesn't pause between re-authentications. Your enforcement shouldn't either.</strong></p>
+
+    <p>The IoT proliferation isn't slowing down. The BYOD expectation isn't going away. Building a NAC program that only handles managed laptops with supplicants is building a security control for a network that no longer exists.</p>
+
+    <div class="kicker">
+      You checked the ID at the door.<br>
+      Who's checking what they're doing <span class="t">inside</span>?
+    </div>
+
+    <div class="author-line">
+      <div class="author-avatar">🛡</div>
+      <div class="author-info">
+        <div class="author-name">Network Security Engineer</div>
+        <div class="author-role">15+ years · Cisco ISE · Aruba ClearPass · Ivanti NAC · Abu Dhabi, UAE</div>
+      </div>
+    </div>
+  </div>
+
+</article>
+
+<footer>
+  NAC · 802.1X · Continuous Posture · BYOD Security · IoT Network Control · Zero Trust
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const d = document.documentElement;
+    document.getElementById('progress').style.width =
+      (d.scrollTop / (d.scrollHeight - d.clientHeight) * 100) + '%';
+  });
+
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      darkMode: true,
+      background: '#141d2b',
+      primaryColor: '#1a2d40',
+      primaryTextColor: '#b8cce0',
+      primaryBorderColor: '#243450',
+      lineColor: '#00d4aa',
+      secondaryColor: '#0d1826',
+      tertiaryColor: '#111826',
+      edgeLabelBackground: '#141d2b',
+      clusterBkg: '#0e1520',
+      titleColor: '#b8cce0',
+      nodeTextColor: '#b8cce0',
+      quadrantPointFill: '#00d4aa',
+      quadrantPointTextFill: '#e8f0f8',
+      quadrant1Fill: '#001a14',
+      quadrant2Fill: '#0d0c20',
+      quadrant3Fill: '#1a0d0d',
+      quadrant4Fill: '#1a1200',
+    },
+    flowchart: { htmlLabels: true, curve: 'basis', padding: 18 }
+  });
+</script>
+</body>
+</html>

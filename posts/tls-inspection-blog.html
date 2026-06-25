@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TLS Inspection at Scale — The Hidden Risks Nobody Talks About</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,700;1,800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:         #0a0c0f;
+  --bg-card:    #0f1218;
+  --bg-violet:  #130d1e;
+  --bg-raise:   #1a1030;
+  --violet:     #7c3aed;
+  --violet-mid: #a855f7;
+  --violet-dim: #2d1060;
+  --cyan:       #22d3ee;
+  --cyan-dim:   #083344;
+  --amber:      #f59e0b;
+  --amber-dim:  #451a00;
+  --danger:     #ef4444;
+  --text:       #c8d0dc;
+  --text-bright:#f0f4f8;
+  --text-dim:   #4a5568;
+  --border:     #1a2030;
+  --border-mid: #243050;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.78;
+  -webkit-font-smoothing: antialiased;
+}
+
+#progress {
+  position: fixed; top: 0; left: 0;
+  height: 2px; width: 0%;
+  background: linear-gradient(90deg, var(--violet), var(--cyan));
+  z-index: 999;
+  transition: width 0.1s linear;
+}
+
+/* ══════════════ HERO ══════════════ */
+.hero {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Subtle radial glow */
+.hero-glow {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 30% 40%, #7c3aed18 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 75% 60%, #22d3ee0e 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.hero-content {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  max-width: 1140px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 100px 40px 60px;
+  align-items: center;
+}
+
+/* Left text */
+.hero-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--violet-mid);
+  margin-bottom: 28px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-label::before {
+  content: '';
+  width: 24px; height: 1px;
+  background: var(--violet-mid);
+}
+
+.hero h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(36px, 4vw, 58px);
+  font-weight: 900;
+  line-height: 1.07;
+  letter-spacing: -0.02em;
+  color: var(--text-bright);
+  margin-bottom: 24px;
+}
+
+.hero h1 em {
+  font-style: italic;
+  color: var(--violet-mid);
+}
+
+.hero-sub {
+  font-size: 17px;
+  color: var(--text-dim);
+  line-height: 1.65;
+  margin-bottom: 36px;
+  max-width: 420px;
+}
+
+.hero-chips {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.chip {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border: 1px solid var(--border-mid);
+  color: var(--text-dim);
+}
+
+/* ── TLS Handshake Animation ── */
+.handshake-widget {
+  background: var(--bg-card);
+  border: 1px solid var(--border-mid);
+  overflow: hidden;
+  position: relative;
+}
+
+.hw-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--border);
+}
+.hw-dot { width: 8px; height: 8px; border-radius: 50%; }
+.hw-title {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 10px; letter-spacing: 0.1em; color: var(--text-dim);
+  margin-left: 4px; flex: 1;
+}
+
+.hw-body {
+  padding: 24px 20px;
+}
+
+/* Three columns: client | inspector | server */
+.hw-cols {
+  display: grid;
+  grid-template-columns: 1fr 80px 1fr;
+  gap: 0;
+  margin-bottom: 16px;
+}
+.hw-col-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.hw-col-label.client  { color: var(--cyan); }
+.hw-col-label.inspect { color: var(--violet-mid); }
+.hw-col-label.server  { color: var(--amber); }
+
+/* Steps */
+.hw-steps { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+
+.hw-step {
+  display: grid;
+  grid-template-columns: 1fr 80px 1fr;
+  align-items: center;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  min-height: 32px;
+}
+.hw-step.visible { opacity: 1; transform: translateY(0); }
+
+/* Arrow elements */
+.arrow-right, .arrow-left {
+  display: flex; align-items: center; position: relative;
+  height: 26px;
+}
+.arrow-right { justify-content: flex-end; padding-right: 6px; }
+.arrow-left  { justify-content: flex-start; padding-left: 6px; }
+
+.arr-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 9px; letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.arr-label.c { color: var(--cyan); }
+.arr-label.v { color: var(--violet-mid); }
+.arr-label.a { color: var(--amber); }
+
+/* Inline arrow SVGs */
+.arr-svg { flex-shrink: 0; }
+
+/* Midpoint cell */
+.hw-mid {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%;
+}
+.hw-mid-box {
+  background: var(--bg-violet);
+  border: 1px solid var(--violet-dim);
+  padding: 3px 6px;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 8px; color: var(--violet-mid); letter-spacing: 0.06em;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.5s ease 0.2s;
+}
+.hw-mid-box.visible { opacity: 1; }
+
+/* Broken lock indicator */
+.hw-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 9px; letter-spacing: 0.1em; color: var(--violet-mid);
+}
+.hw-footer .pulse {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--violet-mid);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.3; transform: scale(0.6); }
+}
+
+/* Hero bottom strip */
+.hero-strip {
+  position: relative;
+  border-top: 1px solid var(--border);
+  padding: 16px 40px;
+  max-width: 1140px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex; gap: 40px; flex-wrap: wrap;
+}
+.hs-item {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 10px; letter-spacing: 0.1em; color: var(--text-dim);
+}
+.hs-item strong { color: var(--text-bright); font-weight: 500; }
+
+/* ══════════════ ARTICLE ══════════════ */
+.article {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 88px 24px 100px;
+}
+
+p { margin-bottom: 22px; font-size: 17px; }
+strong { color: var(--text-bright); font-weight: 600; }
+em { font-style: italic; }
+
+/* ── Section headings ── */
+.sec {
+  margin-top: 76px;
+  margin-bottom: 32px;
+  border-left: 3px solid var(--violet);
+  padding-left: 20px;
+}
+.sec-tag {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 10px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--violet-mid);
+  margin-bottom: 8px;
+}
+h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 30px; font-weight: 800;
+  color: var(--text-bright);
+  letter-spacing: -0.02em; line-height: 1.2;
+}
+
+h3 {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 19px; font-weight: 600;
+  color: var(--text-bright);
+  margin-top: 44px; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+h3::before {
+  content: '//';
+  font-family: 'Source Code Pro', monospace;
+  font-size: 14px; color: var(--violet);
+  flex-shrink: 0;
+}
+
+/* ── Diagrams ── */
+.diagram-wrap {
+  margin: 48px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.dw-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 18px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--border);
+}
+.dw-dot { width: 8px; height: 8px; border-radius: 50%; }
+.dw-title {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-dim); flex: 1;
+}
+.dw-body { padding: 28px 20px; overflow-x: auto; }
+.dw-body .mermaid { display: flex; justify-content: center; }
+
+/* ── Callouts ── */
+.callout {
+  margin: 36px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 0;
+  overflow: hidden;
+}
+.callout-top {
+  height: 3px;
+}
+.callout-body {
+  padding: 20px 24px;
+}
+.callout-label {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 10px; letter-spacing: 0.18em;
+  text-transform: uppercase; margin-bottom: 10px; font-weight: 500;
+}
+.callout p { margin-bottom: 0; font-size: 15.5px; line-height: 1.65; }
+.callout.violet .callout-top  { background: var(--violet); }
+.callout.violet .callout-label { color: var(--violet-mid); }
+.callout.cyan   .callout-top  { background: var(--cyan); }
+.callout.cyan   .callout-label { color: var(--cyan); }
+.callout.amber  .callout-top  { background: var(--amber); }
+.callout.amber  .callout-label { color: var(--amber); }
+.callout.danger .callout-top  { background: var(--danger); }
+.callout.danger .callout-label { color: var(--danger); }
+
+/* ── Risk matrix ── */
+.risk-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  margin: 36px 0;
+}
+.rg-cell {
+  padding: 18px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  transition: border-color 0.2s;
+}
+.rg-cell:hover { border-color: var(--border-mid); }
+.rg-tag {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 9px; letter-spacing: 0.15em;
+  text-transform: uppercase; margin-bottom: 8px; font-weight: 500;
+}
+.rg-cell.high   .rg-tag { color: var(--danger); }
+.rg-cell.medium .rg-tag { color: var(--amber); }
+.rg-cell.low    .rg-tag { color: var(--cyan); }
+.rg-title {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 600;
+  color: var(--text-bright); margin-bottom: 6px;
+}
+.rg-desc {
+  font-size: 12px; color: var(--text-dim); line-height: 1.55;
+}
+
+/* ── Code-style cipher block ── */
+.cipher-block {
+  margin: 32px 0;
+  background: #050708;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--violet);
+  overflow: hidden;
+}
+.cb-header {
+  padding: 8px 16px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--border);
+  font-family: 'Source Code Pro', monospace;
+  font-size: 10px; letter-spacing: 0.1em;
+  color: var(--text-dim); text-transform: uppercase;
+}
+.cb-body {
+  padding: 16px 20px;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 13px; line-height: 1.8;
+  color: var(--cyan);
+}
+.cb-body .comment { color: var(--text-dim); }
+.cb-body .broken  { color: var(--danger); text-decoration: line-through; }
+.cb-body .warn    { color: var(--amber); }
+.cb-body .ok      { color: #4ade80; }
+
+/* ── Numbered list (custom) ── */
+.n-list {
+  list-style: none;
+  margin: 32px 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.n-item {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.n-item:first-child { border-radius: 2px 2px 0 0; }
+.n-item:last-child  { border-radius: 0 0 2px 2px; }
+.n-item:hover { border-color: var(--border-mid); }
+.n-num {
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 13px; font-weight: 500;
+  color: var(--violet-mid);
+  border-right: 1px solid var(--border);
+  background: var(--bg-violet);
+}
+.n-body { padding: 15px 18px; }
+.n-body strong { font-size: 14px; display: block; margin-bottom: 4px; }
+.n-body p { margin: 0; font-size: 13.5px; color: var(--text-dim); line-height: 1.55; }
+
+/* ── Two-col comparison ── */
+.two-col {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin: 36px 0;
+}
+.tc-head {
+  padding: 10px 16px;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 500;
+}
+.tc-head.bad  { background: #1a0808; color: var(--danger); }
+.tc-head.good { background: #081a12; color: var(--cyan); }
+.tc-row-bad  { background: #100606; border: 1px solid #2a1010; padding: 12px 16px; font-size: 13.5px; color: #d08080; line-height: 1.55; }
+.tc-row-good { background: #060f0a; border: 1px solid #0a2a1a; padding: 12px 16px; font-size: 13.5px; color: #80c8a0; line-height: 1.55; }
+@media (max-width: 560px) { .two-col { grid-template-columns: 1fr; } }
+
+/* ── Pull quote ── */
+.pull {
+  margin: 52px 0;
+  padding: 32px 36px;
+  background: var(--bg-violet);
+  border-top: 1px solid var(--violet-dim);
+  border-bottom: 1px solid var(--violet-dim);
+}
+.pull p {
+  font-family: 'Playfair Display', serif;
+  font-size: 23px; font-weight: 700;
+  color: var(--text-bright);
+  line-height: 1.4; letter-spacing: -0.01em;
+  margin-bottom: 0;
+  font-style: italic;
+}
+.pull p .v { color: var(--violet-mid); font-style: normal; }
+
+/* ── Closing ── */
+.closing {
+  margin-top: 80px; padding-top: 48px;
+  border-top: 1px solid var(--border);
+}
+.closing p { font-size: 18px; line-height: 1.78; margin-bottom: 20px; }
+
+.kicker {
+  margin-top: 44px;
+  font-family: 'Playfair Display', serif;
+  font-size: 30px; font-weight: 900;
+  color: var(--text-bright);
+  line-height: 1.2; letter-spacing: -0.02em;
+}
+.kicker .v { color: var(--violet-mid); font-style: italic; }
+
+.author-card {
+  margin-top: 52px;
+  padding: 18px 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; gap: 14px;
+}
+.author-icon {
+  width: 40px; height: 40px;
+  background: var(--bg-violet);
+  border: 1px solid var(--violet-dim);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.author-name { font-family: 'Source Code Pro', monospace; font-size: 12px; color: var(--text-bright); }
+.author-role { font-family: 'Source Code Pro', monospace; font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+
+/* ── Footer ── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 28px 24px;
+  text-align: center;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ── Responsive ── */
+@media (max-width: 920px) {
+  .hero-content { grid-template-columns: 1fr; padding: 80px 24px 40px; }
+  .handshake-widget { max-width: 480px; }
+}
+@media (max-width: 600px) {
+  .hero h1 { font-size: 32px; }
+  h2 { font-size: 24px; }
+  .risk-grid { grid-template-columns: 1fr; }
+  .hero-strip { padding: 16px 24px; }
+  .pull p { font-size: 19px; }
+  .kicker { font-size: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hw-step { transition: none; }
+  .hw-mid-box { transition: none; }
+  .pulse { animation: none; }
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<!-- ══════════════ HERO ══════════════ -->
+<header class="hero">
+  <div class="hero-glow"></div>
+
+  <div class="hero-content">
+
+    <!-- Left: text -->
+    <div class="hero-text">
+      <div class="hero-label">TLS Inspection · PKI · Encrypted Traffic Security</div>
+      <h1>You're Breaking<br>Encryption to<br><em>Inspect</em> It.<br>Does That Worry You?</h1>
+      <p class="hero-sub">TLS inspection solves a real problem. It also introduces certificate chain fragility, forward secrecy collapse, OCSP failures, and legal exposure — none of which appear in the vendor's deployment guide.</p>
+      <div class="hero-chips">
+        <span class="chip">TLS 1.3</span>
+        <span class="chip">mTLS</span>
+        <span class="chip">PKI</span>
+        <span class="chip">NGFW Decrypt</span>
+        <span class="chip">Forward Secrecy</span>
+        <span class="chip">~13 min read</span>
+      </div>
+    </div>
+
+    <!-- Right: Handshake animation widget -->
+    <div class="handshake-widget">
+      <div class="hw-bar">
+        <span class="hw-dot" style="background:#ef4444"></span>
+        <span class="hw-dot" style="background:#f59e0b"></span>
+        <span class="hw-dot" style="background:#22d3ee"></span>
+        <span class="hw-title">TLS_INTERCEPT — Live session</span>
+      </div>
+      <div class="hw-body">
+        <div class="hw-cols">
+          <div class="hw-col-label client">CLIENT</div>
+          <div class="hw-col-label inspect">NGFW</div>
+          <div class="hw-col-label server">SERVER</div>
+        </div>
+
+        <div class="hw-steps" id="hwSteps">
+
+          <!-- Step 1: ClientHello → -->
+          <div class="hw-step" data-delay="400">
+            <div class="arrow-right">
+              <span class="arr-label c">ClientHello</span>
+              <svg class="arr-svg" width="20" height="14" viewBox="0 0 20 14" fill="none">
+                <line x1="0" y1="7" x2="16" y2="7" stroke="#22d3ee" stroke-width="1.2"/>
+                <polyline points="11,3 17,7 11,11" fill="none" stroke="#22d3ee" stroke-width="1.2"/>
+              </svg>
+            </div>
+            <div class="hw-mid">
+              <div class="hw-mid-box" id="midBox1">INTERCEPT</div>
+            </div>
+            <div class="arrow-right" style="justify-content:flex-start; padding-left:6px;">
+              <svg class="arr-svg" width="20" height="14" viewBox="0 0 20 14" fill="none">
+                <line x1="4" y1="7" x2="20" y2="7" stroke="#f59e0b" stroke-width="1.2"/>
+                <polyline points="15,3 21,7 15,11" fill="none" stroke="#f59e0b" stroke-width="1.2"/>
+              </svg>
+              <span class="arr-label v" style="font-size:8px">Re-ClientHello</span>
+            </div>
+          </div>
+
+          <!-- Step 2: ← ServerHello + Cert -->
+          <div class="hw-step" data-delay="1000">
+            <div class="arrow-left">
+              <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+                <line x1="0" y1="7" x2="16" y2="7" stroke="#22d3ee" stroke-width="1.2"/>
+                <polyline points="5,3 -1,7 5,11" fill="none" stroke="#22d3ee" stroke-width="1.2"/>
+              </svg>
+              <span class="arr-label v" style="font-size:8px">Fake Cert*</span>
+            </div>
+            <div class="hw-mid">
+              <div class="hw-mid-box" id="midBox2">RE-SIGN</div>
+            </div>
+            <div class="arrow-left" style="justify-content:flex-end; padding-right:6px;">
+              <span class="arr-label a">ServerHello+Cert</span>
+              <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+                <line x1="0" y1="7" x2="14" y2="7" stroke="#f59e0b" stroke-width="1.2"/>
+                <polyline points="4,3 -2,7 4,11" fill="none" stroke="#f59e0b" stroke-width="1.2"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Step 3: KeyExchange -->
+          <div class="hw-step" data-delay="1600">
+            <div class="arrow-right">
+              <span class="arr-label c" style="font-size:8px">Key Exchange</span>
+              <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+                <line x1="0" y1="7" x2="16" y2="7" stroke="#22d3ee" stroke-width="1.2"/>
+                <polyline points="11,3 17,7 11,11" fill="none" stroke="#22d3ee" stroke-width="1.2"/>
+              </svg>
+            </div>
+            <div class="hw-mid">
+              <div class="hw-mid-box" id="midBox3">DECRYPT</div>
+            </div>
+            <div class="arrow-right" style="justify-content:flex-start; padding-left:6px;">
+              <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+                <line x1="4" y1="7" x2="20" y2="7" stroke="#f59e0b" stroke-width="1.2"/>
+                <polyline points="15,3 21,7 15,11" fill="none" stroke="#f59e0b" stroke-width="1.2"/>
+              </svg>
+              <span class="arr-label v" style="font-size:8px">New Key Exchange</span>
+            </div>
+          </div>
+
+          <!-- Step 4: Application Data -->
+          <div class="hw-step" data-delay="2200">
+            <div class="arrow-right">
+              <span class="arr-label c" style="font-size:8px">AppData (plaintext→)</span>
+              <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+                <line x1="0" y1="7" x2="16" y2="7" stroke="#22d3ee" stroke-width="1.2"/>
+                <polyline points="11,3 17,7 11,11" fill="none" stroke="#22d3ee" stroke-width="1.2"/>
+              </svg>
+            </div>
+            <div class="hw-mid">
+              <div class="hw-mid-box" id="midBox4">INSPECT</div>
+            </div>
+            <div class="arrow-right" style="justify-content:flex-start; padding-left:6px;">
+              <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+                <line x1="4" y1="7" x2="20" y2="7" stroke="#f59e0b" stroke-width="1.2"/>
+                <polyline points="15,3 21,7 15,11" fill="none" stroke="#f59e0b" stroke-width="1.2"/>
+              </svg>
+              <span class="arr-label v" style="font-size:8px">Re-encrypted</span>
+            </div>
+          </div>
+
+        </div><!-- end hw-steps -->
+
+        <div class="hw-footer">
+          <div class="pulse"></div>
+          <span>TWO SEPARATE TLS SESSIONS · CLIENT CERT MISMATCH POSSIBLE · FS BROKEN IF STATIC KEY</span>
+        </div>
+      </div>
+    </div>
+  </div><!-- end hero-content -->
+
+  <div class="hero-strip">
+    <span class="hs-item"><strong>~80%</strong> of enterprise traffic now encrypted</span>
+    <span class="hs-item"><strong>TLS 1.3</strong> makes inspection harder by design</span>
+    <span class="hs-item"><strong>Certificate pinning</strong> breaks silently in 15–40% of apps</span>
+    <span class="hs-item"><strong>GDPR/UAE PDPL</strong> compliance exposure in regulated flows</span>
+  </div>
+</header>
+
+<!-- ══════════════ ARTICLE ══════════════ -->
+<article class="article">
+
+  <p>The argument for TLS inspection is sound. Roughly 80% of malware now uses encrypted channels for C2 communication. An NGFW that can't see inside TLS is, effectively, a very expensive packet forwarder. If your IPS signatures, DLP rules, and URL categorization can't touch encrypted traffic, you've built your security stack on an assumption that the bad actors stopped using HTTPS — which they absolutely have not.</p>
+
+  <p>So you deploy SSL/TLS inspection. The firewall becomes a MITM — by design, with full administrative intent. It terminates the client's TLS session, decrypts the payload, inspects it, re-encrypts with a new session toward the server, and passes traffic along. The architecture diagram looks clean. The vendor says throughput is fine. The compliance team signs off.</p>
+
+  <p>What the architecture diagram doesn't show is what you broke in the process.</p>
+
+  <!-- Section 1 -->
+  <div class="sec">
+    <div class="sec-tag">The Core Problem</div>
+    <h2>You Are the Man in the Middle</h2>
+  </div>
+
+  <p>TLS inspection is, technically and architecturally, a Man-in-the-Middle attack. The only difference between what your NGFW is doing and what an attacker would do is authorization — you've explicitly set it up. But the cryptographic implications are identical.</p>
+
+  <p>The client thinks it's talking to the server. It's not. It's talking to your firewall. The firewall is talking to the server. There are two separate TLS sessions, two separate certificate chains, two separate key negotiation processes. The "end-to-end" assurance that TLS is supposed to provide has been deliberately broken at the midpoint.</p>
+
+  <div class="callout danger">
+    <div class="callout-top"></div>
+    <div class="callout-body">
+      <div class="callout-label">⚠ The Foundational Paradox</div>
+      <p>TLS inspection requires your firewall to present a certificate the client will trust — which means you've issued a sub-CA from your enterprise PKI, or you're running a rogue CA on a trusted anchor. From a PKI standpoint, that sub-CA can sign <em>any</em> certificate. Your NGFW is now a Certificate Authority. If that device is compromised, an attacker can issue legitimate-looking certificates for any domain — including your own.</p>
+    </div>
+  </div>
+
+  <div class="diagram-wrap">
+    <div class="dw-bar">
+      <span class="dw-dot" style="background:#ef4444"></span>
+      <span class="dw-dot" style="background:#f59e0b"></span>
+      <span class="dw-dot" style="background:#22d3ee"></span>
+      <span class="dw-title">Figure 01 — What TLS Inspection Actually Creates</span>
+    </div>
+    <div class="dw-body">
+      <div class="mermaid">
+sequenceDiagram
+    participant C as Client
+    participant FW as NGFW (Interceptor)
+    participant S as Server
+
+    Note over C,FW: Session 1 — Client trusts NGFW Sub-CA cert
+    C->>FW: ClientHello (TLS 1.3)
+    FW->>C: ServerHello + NGFW-signed cert
+    C->>FW: Encrypted with NGFW key ✓
+
+    Note over FW,S: Session 2 — NGFW acts as client to server
+    FW->>S: ClientHello (new session)
+    S->>FW: ServerHello + real server cert
+    FW->>S: Encrypted with server's key ✓
+
+    Note over FW: NGFW decrypts, inspects plaintext, re-encrypts
+    Note over C,S: ❌ End-to-end integrity: BROKEN
+    Note over C,S: ❌ Forward secrecy: depends on NGFW implementation
+    Note over C,S: ❌ Certificate pinning: broken for pinned apps
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2 -->
+  <div class="sec">
+    <div class="sec-tag">Risk 1</div>
+    <h2>Forward Secrecy: The Quiet Casualty</h2>
+  </div>
+
+  <p>Perfect Forward Secrecy (PFS) is one of TLS's most important properties. With PFS — implemented via ephemeral Diffie-Hellman (DHE/ECDHE) key exchange — each session generates a fresh set of session keys. Capture the traffic today, compromise the server's private key tomorrow: it doesn't matter. You cannot retroactively decrypt sessions protected by PFS because the session keys were never stored and were never derivable from the long-term private key.</p>
+
+  <p>This guarantee exists between the client and the server. When you insert a TLS inspection device, you now have <em>two</em> sessions. PFS on the client-to-NGFW leg is entirely dependent on what your firewall does. And here is where most deployments quietly break the model:</p>
+
+  <div class="cipher-block">
+    <div class="cb-header">Cipher suite negotiation at TLS inspection point</div>
+    <div class="cb-body">
+<span class="comment"># What the server offered (modern, FS-capable)</span>
+TLS_AES_256_GCM_SHA384           <span class="ok">← TLS 1.3, FS inherent</span>
+TLS_CHACHA20_POLY1305_SHA256      <span class="ok">← TLS 1.3, FS inherent</span>
+
+<span class="comment"># What your 3-year-old NGFW actually negotiated toward the client</span>
+<span class="broken">TLS_RSA_WITH_AES_256_CBC_SHA256</span>   <span class="warn">← RSA key exchange, NO FS</span>
+<span class="broken">TLS_RSA_WITH_AES_128_CBC_SHA</span>      <span class="warn">← RSA key exchange, NO FS</span>
+
+<span class="comment"># Result: All client traffic re-encrypted with static RSA key.</span>
+<span class="comment"># Capture the NGFW private key → decrypt ALL historical sessions.</span>
+<span class="warn">FS guarantee: SILENTLY ELIMINATED</span>
+    </div>
+  </div>
+
+  <p>This happens because TLS inspection appliances — especially older NGFW versions — have their own cipher suite limitations. They may not support ECDHE on the client-facing leg, or they downgrade to RSA for performance reasons. The logs show TLS. The traffic looks encrypted. But every session is retroactively decryptable with a single key compromise.</p>
+
+  <p>Check your NGFW's TLS inspection cipher policy right now. If it includes any <code style="font-family:'Source Code Pro',monospace;font-size:14px;color:var(--violet-mid);">TLS_RSA_*</code> cipher suite on the client-facing leg, you've quietly broken forward secrecy for all inspected traffic.</p>
+
+  <!-- Section 3 -->
+  <div class="sec">
+    <div class="sec-tag">Risk 2</div>
+    <h2>Certificate Pinning: Silent Application Breakage</h2>
+  </div>
+
+  <p>Certificate pinning is a security mechanism where an application hard-codes the expected certificate (or its public key hash) for a specific server. When the connection is established, the application checks the presented certificate against its pin. If it doesn't match — even if the cert is otherwise valid and trusted — the connection is rejected.</p>
+
+  <p>Your NGFW is presenting its own certificate, signed by your sub-CA. The pin doesn't match. The application breaks.</p>
+
+  <div class="callout amber">
+    <div class="callout-top"></div>
+    <div class="callout-body">
+      <div class="callout-label">⚡ The Problem Is You Don't Know It's Happening</div>
+      <p>Pinning failures are frequently opaque. The app doesn't say "TLS inspection detected." It says "connection failed," "service unavailable," or — if you're lucky — logs an SSL error. Certificate pinning is widely used in financial apps, MDM agents, EDR sensors, cloud backup clients, and enterprise SaaS products. In a large enterprise, you likely have dozens of pinned applications. Your NGFW's bypass list is probably missing half of them.</p>
+    </div>
+  </div>
+
+  <p>Common categories that break silently under TLS inspection:</p>
+
+  <div class="risk-grid">
+    <div class="rg-cell high">
+      <div class="rg-tag">High Risk</div>
+      <div class="rg-title">Banking & Financial Apps</div>
+      <div class="rg-desc">Aggressive pinning, zero tolerance for cert mismatch. Will hard-fail with no useful error.</div>
+    </div>
+    <div class="rg-cell high">
+      <div class="rg-tag">High Risk</div>
+      <div class="rg-title">EDR / AV Agents</div>
+      <div class="rg-desc">CrowdStrike, SentinelOne pin their cloud connections. Inspect these and your security tooling goes blind without warning.</div>
+    </div>
+    <div class="rg-cell high">
+      <div class="rg-tag">High Risk</div>
+      <div class="rg-title">MDM Enrollment</div>
+      <div class="rg-desc">Intune, Jamf enrollment flows use pinning. Inspecting these breaks device onboarding.</div>
+    </div>
+    <div class="rg-cell medium">
+      <div class="rg-tag">Medium Risk</div>
+      <div class="rg-title">Cloud Backup Clients</div>
+      <div class="rg-desc">Backup agents that pin cloud endpoints fail silently. Your backups stop. You find out during recovery.</div>
+    </div>
+    <div class="rg-cell medium">
+      <div class="rg-tag">Medium Risk</div>
+      <div class="rg-title">HSTS Preloaded Sites</div>
+      <div class="rg-desc">HSTS + HPKP enforces pinning at the browser level. Inspection of preloaded sites may trigger hard-coded browser failures.</div>
+    </div>
+    <div class="rg-cell low">
+      <div class="rg-tag">Lower Risk</div>
+      <div class="rg-title">Standard Web Apps</div>
+      <div class="rg-desc">Most standard web traffic doesn't pin. Still at risk from OCSP stapling failures and TLS 1.3 issues (see below).</div>
+    </div>
+  </div>
+
+  <!-- Section 4 -->
+  <div class="sec">
+    <div class="sec-tag">Risk 3</div>
+    <h2>OCSP Stapling Failures and Revocation Blindness</h2>
+  </div>
+
+  <p>Online Certificate Status Protocol (OCSP) stapling is a mechanism where the server pre-fetches its own certificate revocation status from the CA and includes it ("staples" it) in the TLS handshake. This means the client gets revocation status without having to make a separate OCSP request — faster, more private, and more reliable.</p>
+
+  <p>When your NGFW intercepts, it terminates the server's TLS session and creates a new one toward the client. The OCSP staple from the real server certificate doesn't carry across — the NGFW is presenting its own forged certificate, not the server's. The staple is lost.</p>
+
+  <p>What happens next depends on your client configuration:</p>
+
+  <div class="two-col">
+    <div>
+      <div class="tc-head bad">Soft-fail OCSP (default)</div>
+      <div class="tc-row-bad">Client checks for OCSP response, doesn't get one, shrugs and continues. You've lost revocation checking entirely. A revoked server cert looks the same as a valid one.</div>
+    </div>
+    <div>
+      <div class="tc-head good">Hard-fail OCSP</div>
+      <div class="tc-row-good">Client requires OCSP response and rejects connections without one. More secure — but your TLS inspection deployment will break these connections systematically until your NGFW is configured to perform and forward OCSP responses itself.</div>
+    </div>
+  </div>
+
+  <p>The security implication of soft-fail is severe: <strong>certificate revocation becomes meaningless for inspected traffic</strong>. A compromised certificate that has been revoked at the CA will still be accepted by clients behind your inspection device, because neither the staple nor the fallback OCSP lookup is being properly handled.</p>
+
+  <!-- Section 5 -->
+  <div class="sec">
+    <div class="sec-tag">Risk 4</div>
+    <h2>TLS 1.3 Was Deliberately Designed to Resist You</h2>
+  </div>
+
+  <p>TLS 1.3 removed a significant number of features that made inspection easier — not by accident, but by deliberate design by the IETF. The security community understood that middlebox inspection was being used not just by enterprise firewalls but also by nation-state adversaries and malicious ISPs, and they tightened the protocol accordingly.</p>
+
+  <p>What changed in TLS 1.3 that directly impacts inspection:</p>
+
+  <ul class="n-list">
+    <li class="n-item">
+      <div class="n-num">01</div>
+      <div class="n-body">
+        <strong>Encrypted SNI (ESNI) / Encrypted Client Hello (ECH)</strong>
+        <p>The Server Name Indication — which tells the server (and any middlebox) which hostname the client wants — is now encrypted in TLS 1.3 with ECH. Your NGFW can't read the SNI to decide whether to inspect the session before it's already established. URL-based bypass decisions become impossible.</p>
+      </div>
+    </li>
+    <li class="n-item">
+      <div class="n-num">02</div>
+      <div class="n-body">
+        <strong>0-RTT (Zero Round Trip Time) resumption</strong>
+        <p>0-RTT allows clients to send application data in the first message, before the handshake completes. Inspection devices that haven't processed the full handshake can't inspect 0-RTT data. Depending on your NGFW, these early data packets either bypass inspection or cause the session to fail.</p>
+      </div>
+    </li>
+    <li class="n-item">
+      <div class="n-num">03</div>
+      <div class="n-body">
+        <strong>Removal of static RSA key exchange</strong>
+        <p>TLS 1.3 mandates ephemeral key exchange. There is no longer a static server private key that a network appliance can be pre-loaded with to passively decrypt traffic. Every session requires active participation in the key exchange — which means passive decryption taps are dead, and only active MITM (your current approach) remains viable.</p>
+      </div>
+    </li>
+    <li class="n-item">
+      <div class="n-num">04</div>
+      <div class="n-body">
+        <strong>Certificate transparency expectations</strong>
+        <p>Browsers increasingly enforce Certificate Transparency (CT) log requirements. Your NGFW's sub-CA-signed certificates are not in any public CT log. Chrome and Firefox may generate visible warnings or hard failures for CT-non-compliant certificates, depending on the site's SCT requirements.</p>
+      </div>
+    </li>
+  </ul>
+
+  <div class="pull">
+    <p>The IETF didn't make TLS 1.3 harder to inspect <span class="v">accidentally</span>. They did it on purpose. Your inspection architecture is working against the direction the protocol is deliberately heading.</p>
+  </div>
+
+  <!-- Section 6 -->
+  <div class="sec">
+    <div class="sec-tag">Risk 5</div>
+    <h2>Compliance and Legal Exposure</h2>
+  </div>
+
+  <p>Decrypting user traffic creates data handling obligations that most organizations haven't thought through carefully. The inspection device is processing plaintext — usernames, passwords, session tokens, personal communications, health information, financial data — even if only transiently and only for inspection purposes.</p>
+
+  <p>In regulated environments, the relevant frameworks have explicit requirements:</p>
+
+  <div class="callout violet">
+    <div class="callout-top"></div>
+    <div class="callout-body">
+      <div class="callout-label">⚖ UAE / Regional Compliance Context</div>
+      <p>Under the <strong>UAE Personal Data Protection Law (PDPL)</strong> and the NCA's Essential Cybersecurity Controls, interception of communications — including network inspection — may require explicit data processing records, data minimization justification, and in some interpretations, notification to data subjects. Blanket TLS inspection of all user traffic without documented justification, scope limitation, and bypass for personal/banking sessions is a compliance risk, not just an operational one. The same applies under <strong>GDPR</strong> for any entity handling EU data subjects' traffic.</p>
+    </div>
+  </div>
+
+  <!-- Section 7 -->
+  <div class="sec">
+    <div class="sec-tag">Architecture</div>
+    <h2>Doing TLS Inspection Right</h2>
+  </div>
+
+  <p>The answer isn't to remove TLS inspection. It's to deploy it with full awareness of what it breaks and a compensating control for each failure mode.</p>
+
+  <div class="diagram-wrap">
+    <div class="dw-bar">
+      <span class="dw-dot" style="background:#ef4444"></span>
+      <span class="dw-dot" style="background:#f59e0b"></span>
+      <span class="dw-dot" style="background:#22d3ee"></span>
+      <span class="dw-title">Figure 02 — TLS Inspection: Mature Deployment Architecture</span>
+    </div>
+    <div class="dw-body">
+      <div class="mermaid">
+flowchart TD
+    subgraph PRE["Pre-Inspection Decision"]
+        D1{"Category\nCheck"}
+        BYPASS["Bypass List\nBanking · MDM · EDR\nHealthcare · Legal\nPinned Apps"]
+        INSPECT["Inspection Queue"]
+    end
+
+    subgraph INSP["Inspection Layer — NGFW"]
+        I1["TLS Termination\n↳ TLS 1.3 + ECDHE mandatory\n↳ PFS on client leg enforced"]
+        I2["OCSP Relay\n↳ Fetch & forward staple\n↳ Hard-fail on revoked"]
+        I3["Policy Engines\n↳ IPS · DLP · URL · AV"]
+        I4["Re-encrypt\n↳ Fresh ECDHE to server\n↳ Log session metadata only"]
+    end
+
+    subgraph PKI["PKI Controls"]
+        P1["Sub-CA\n↳ Hardware HSM\n↳ Constrained path length\n↳ Name-constrained to internal domains"]
+        P2["CT Log Exemption\n↳ Internal CA only\n↳ Documented in policy"]
+    end
+
+    D1 -->|"Pinned / Regulated"| BYPASS
+    D1 -->|"General web traffic"| INSPECT
+    INSPECT --> I1 --> I2 --> I3 --> I4
+    P1 --> I1
+    P2 --> I1
+
+    style PRE fill:#0a0c0f,color:#c8d0dc,stroke:#243050
+    style INSP fill:#130d1e,color:#c8d0dc,stroke:#2d1060
+    style PKI fill:#083344,color:#c8d0dc,stroke:#0e5060
+      </div>
+    </div>
+  </div>
+
+  <p>The non-negotiable controls for any mature TLS inspection deployment:</p>
+
+  <ul class="n-list">
+    <li class="n-item">
+      <div class="n-num">01</div>
+      <div class="n-body">
+        <strong>ECDHE-only on the client-facing leg — no exceptions</strong>
+        <p>Audit your NGFW's cipher policy for the decrypted-to-client session. Disable all <code style="font-family:'Source Code Pro',monospace;color:var(--violet-mid)">TLS_RSA_*</code> suites. If your appliance can't enforce ECDHE on the client leg, it's not fit for TLS inspection in a PFS-required environment.</p>
+      </div>
+    </li>
+    <li class="n-item">
+      <div class="n-num">02</div>
+      <div class="n-body">
+        <strong>Maintain and actively update the bypass list</strong>
+        <p>Build the bypass list from observed pinning failures + known-pinned app categories + regulated data categories. Review quarterly. Assign ownership — this list decays fast as apps update their pinning. Automation via category feeds (Palo Alto EDL, Fortinet ISDB) helps but doesn't replace manual curation.</p>
+      </div>
+    </li>
+    <li class="n-item">
+      <div class="n-num">03</div>
+      <div class="n-body">
+        <strong>Sub-CA in a hardware HSM, name-constrained</strong>
+        <p>The sub-CA that signs inspection certificates must live in an HSM — never exported, never on the NGFW's local storage. Apply X.509 name constraints so it can only sign certificates for your internal domain namespace. A compromised NGFW should not yield a sub-CA capable of signing <code style="font-family:'Source Code Pro',monospace;color:var(--violet-mid)">*.google.com</code>.</p>
+      </div>
+    </li>
+    <li class="n-item">
+      <div class="n-num">04</div>
+      <div class="n-body">
+        <strong>Configure OCSP relay on the inspection device</strong>
+        <p>Your NGFW must fetch OCSP responses for the real server certificate and reconstruct stapling toward the client. Most enterprise NGFWs support this — it's frequently not configured. Without it, revocation checking is silently disabled for all inspected sessions.</p>
+      </div>
+    </li>
+    <li class="n-item">
+      <div class="n-num">05</div>
+      <div class="n-body">
+        <strong>Log metadata only — never buffer plaintext</strong>
+        <p>The inspection device sees plaintext transiently. Ensure it logs session metadata (source, destination, category, policy action, file hashes) — never the payload. Payload logging creates a massive sensitive data store that is itself a breach target and a compliance liability.</p>
+      </div>
+    </li>
+    <li class="n-item">
+      <div class="n-num">06</div>
+      <div class="n-body">
+        <strong>Document the inspection scope formally</strong>
+        <p>Which traffic is inspected, why, for what security purpose, and what bypass categories exist. This document is your defence in a regulatory audit or a data subject complaint. "We inspect everything" is not a defensible position under PDPL or GDPR without documented justification and proportionality assessment.</p>
+      </div>
+    </li>
+  </ul>
+
+  <!-- Closing -->
+  <div class="closing">
+    <p>TLS inspection is not optional in an environment where the majority of malware exfiltrates over HTTPS and DLP rules need to see payload to fire. The choice isn't whether to inspect — it's whether you've accounted for what the inspection breaks.</p>
+
+    <p>Most deployments haven't. The forward secrecy gap is invisible in logs. The pinning failures look like app bugs. The OCSP issue is never noticed because soft-fail means traffic continues. The TLS 1.3 limitations are patched around in ways that quietly downgrade security. <strong>Everything looks like it's working, and some of it quietly isn't.</strong></p>
+
+    <p>The NGFW vendor's documentation tells you how to enable inspection. It rarely tells you what you've traded away to do it. That gap is yours to close.</p>
+
+    <div class="kicker">
+      You can inspect encrypted traffic.<br>
+      You just can't do it <span class="v">for free</span>.
+    </div>
+
+    <div class="author-card">
+      <div class="author-icon">🛡</div>
+      <div>
+        <div class="author-name">Network Security Engineer</div>
+        <div class="author-role">15+ years · PKI · NGFW · Enterprise Security · Abu Dhabi, UAE</div>
+      </div>
+    </div>
+  </div>
+
+</article>
+
+<footer>
+  TLS Inspection · PKI · Forward Secrecy · Certificate Pinning · OCSP · Encrypted Traffic Security
+</footer>
+
+<script>
+  // Progress bar
+  window.addEventListener('scroll', () => {
+    const d = document.documentElement;
+    document.getElementById('progress').style.width =
+      (d.scrollTop / (d.scrollHeight - d.clientHeight) * 100) + '%';
+  });
+
+  // Handshake animation — steps appear with staggered delays
+  document.addEventListener('DOMContentLoaded', () => {
+    const steps = document.querySelectorAll('.hw-step');
+    const midBoxes = document.querySelectorAll('.hw-mid-box');
+
+    steps.forEach((step, i) => {
+      const delay = parseInt(step.dataset.delay || 0, 10);
+      setTimeout(() => {
+        step.classList.add('visible');
+        if (midBoxes[i]) {
+          setTimeout(() => midBoxes[i].classList.add('visible'), 200);
+        }
+      }, delay);
+    });
+  });
+
+  // Mermaid
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      darkMode: true,
+      background: '#0f1218',
+      primaryColor: '#1a1030',
+      primaryTextColor: '#c8d0dc',
+      primaryBorderColor: '#2d1060',
+      lineColor: '#7c3aed',
+      secondaryColor: '#0d1020',
+      tertiaryColor: '#0a0c0f',
+      edgeLabelBackground: '#0f1218',
+      clusterBkg: '#0c0a18',
+      titleColor: '#c8d0dc',
+      nodeTextColor: '#c8d0dc',
+      signalColor: '#7c3aed',
+      signalTextColor: '#c8d0dc',
+      actorBkg: '#1a1030',
+      actorBorder: '#2d1060',
+      actorTextColor: '#c8d0dc',
+      actorLineColor: '#243050',
+      noteBkgColor: '#130d1e',
+      noteTextColor: '#a89dc0',
+    },
+    flowchart: { htmlLabels: true, curve: 'basis', padding: 18 },
+    sequence: { actorMargin: 60, messageMargin: 35, mirrorActors: false }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero Trust for Non-Human Identities — The Accounts Nobody Is Watching</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:         #f7f4ee;
+  --bg-paper:   #f0ece3;
+  --bg-dark:    #141a12;
+  --green:      #2d6a4f;
+  --green-mid:  #40916c;
+  --green-light:#d8f3dc;
+  --green-dim:  #1b4332;
+  --red:        #d62828;
+  --red-light:  #fdf0f0;
+  --amber:      #e07b00;
+  --amber-light:#fff8ec;
+  --text:       #2a2a2a;
+  --text-mid:   #4a4a4a;
+  --text-dim:   #888880;
+  --text-paper: #6a6458;
+  --rule:       #d8d2c4;
+  --rule-dark:  #b8b0a0;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.78;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Progress bar */
+#progress {
+  position: fixed; top: 0; left: 0;
+  height: 3px; width: 0%;
+  background: var(--green);
+  z-index: 999;
+  transition: width 0.1s linear;
+}
+
+/* ══════════════ HERO ══════════════ */
+.hero {
+  background: var(--bg-dark);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle grid — like ledger ruling lines */
+.hero-rules {
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 47px,
+    #1e2a1a 47px,
+    #1e2a1a 48px
+  );
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.hero-top {
+  position: relative;
+  padding: 56px 40px 32px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.hero-eyebrow {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--green-mid);
+  margin-bottom: 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-eyebrow::before {
+  content: '';
+  width: 20px; height: 1px;
+  background: var(--green-mid);
+}
+
+.hero h1 {
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: clamp(32px, 4.5vw, 60px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #e8e4dc;
+  max-width: 700px;
+  margin-bottom: 16px;
+}
+.hero h1 em {
+  font-style: italic;
+  color: var(--green-mid);
+}
+
+.hero-sub {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 16px;
+  color: #7a8a72;
+  max-width: 560px;
+  line-height: 1.6;
+  margin-bottom: 36px;
+}
+
+/* ── The Ledger Table ── */
+.ledger-wrap {
+  position: relative;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 40px 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ledger-header-row {
+  display: grid;
+  grid-template-columns: 220px 130px 80px 150px 140px 110px;
+  gap: 0;
+  border-top: 1px solid #2a3a24;
+  border-bottom: 2px solid #2a3a24;
+  padding: 8px 0;
+}
+
+.lh-cell {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #4a6a40;
+  padding: 4px 12px;
+  border-right: 1px solid #1e2a1a;
+}
+.lh-cell:last-child { border-right: none; }
+
+/* Ledger rows */
+.ledger-body { flex: 1; overflow: hidden; }
+
+.ledger-row {
+  display: grid;
+  grid-template-columns: 220px 130px 80px 150px 140px 110px;
+  gap: 0;
+  border-bottom: 1px solid #1e2a1a;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.ledger-row.show { opacity: 1; transform: translateX(0); }
+
+.lr-cell {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  padding: 10px 12px;
+  color: #8a9e80;
+  border-right: 1px solid #1a2416;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+}
+.lr-cell:last-child { border-right: none; }
+.lr-cell.name { color: #b8d4b0; font-weight: 500; }
+.lr-cell.critical { color: #e07070; }
+.lr-cell.warn { color: #d4a040; }
+.lr-cell.ok   { color: #60a870; }
+.lr-cell.dim  { color: #4a5a44; }
+
+/* Status badge in ledger */
+.l-badge {
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 1px;
+  font-family: 'Roboto Mono', monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.l-badge.active  { background: #1a3a1a; color: #60a870; border: 1px solid #2a5a2a; }
+.l-badge.risk    { background: #3a1a1a; color: #e07070; border: 1px solid #5a2a2a; }
+.l-badge.warn    { background: #2a2000; color: #d4a040; border: 1px solid #4a3600; }
+
+/* The blinking critical row */
+.ledger-row.critical-row .lr-cell { background: #1a0a0a; }
+.ledger-row.critical-row .l-badge.risk {
+  animation: flashRed 1.4s ease-in-out infinite;
+}
+@keyframes flashRed {
+  0%,100% { background: #3a1a1a; color: #e07070; }
+  50%      { background: #6a0000; color: #ffaaaa; border-color: #aa3333; }
+}
+
+.ledger-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0 32px;
+  border-top: 1px solid #2a3a24;
+  margin-top: 0;
+}
+.lf-count {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  color: #4a6a40;
+  letter-spacing: 0.1em;
+}
+.lf-note {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 9px;
+  color: var(--red);
+  letter-spacing: 0.08em;
+  display: flex; align-items: center; gap: 6px;
+}
+.lf-blink {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--red);
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+/* Hero bottom: meta strip */
+.hero-strip {
+  background: #0e1410;
+  border-top: 1px solid #2a3a24;
+  padding: 14px 40px;
+  display: flex; gap: 40px; flex-wrap: wrap;
+}
+.hs-item {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px; letter-spacing: 0.08em; color: #4a6a40;
+}
+.hs-item strong { color: #8ab890; font-weight: 500; }
+
+/* ══════════════ ARTICLE ══════════════ */
+.article {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 88px 24px 100px;
+}
+
+p { margin-bottom: 22px; font-size: 17px; }
+strong { color: #1a1a1a; font-weight: 600; }
+em { font-style: italic; }
+
+/* ── Section heading ── */
+.sec {
+  margin-top: 76px;
+  margin-bottom: 30px;
+}
+.sec-rule {
+  height: 2px;
+  background: var(--rule);
+  margin-bottom: 20px;
+  position: relative;
+}
+.sec-rule::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0;
+  height: 100%;
+  width: 40px;
+  background: var(--green);
+}
+.sec-tag {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--green);
+  margin-bottom: 10px;
+}
+h2 {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 28px; font-weight: 700;
+  color: #111;
+  letter-spacing: -0.02em; line-height: 1.2;
+}
+
+h3 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 19px; font-weight: 700;
+  color: #111;
+  margin-top: 44px; margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+}
+
+/* ── Diagrams ── */
+.diagram-wrap {
+  margin: 48px 0;
+  border: 1px solid var(--rule-dark);
+  overflow: hidden;
+  background: #fff;
+}
+.dw-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 18px;
+  background: var(--bg-paper);
+  border-bottom: 1px solid var(--rule);
+}
+.dw-dot { width: 8px; height: 8px; border-radius: 50%; }
+.dw-title {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-paper); flex: 1;
+}
+.dw-body { padding: 28px 20px; overflow-x: auto; }
+.dw-body .mermaid { display: flex; justify-content: center; }
+
+/* ── Callouts ── */
+.callout {
+  margin: 36px 0;
+  border-left: 3px solid;
+  padding: 20px 24px;
+}
+.callout-label {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px; letter-spacing: 0.18em;
+  text-transform: uppercase; margin-bottom: 10px; font-weight: 500;
+}
+.callout p { margin-bottom: 0; font-size: 15.5px; line-height: 1.65; }
+.callout.green { background: var(--green-light); border-color: var(--green); }
+.callout.green .callout-label { color: var(--green-dim); }
+.callout.red   { background: var(--red-light); border-color: var(--red); }
+.callout.red   .callout-label { color: var(--red); }
+.callout.amber { background: var(--amber-light); border-color: var(--amber); }
+.callout.amber .callout-label { color: var(--amber); }
+
+/* ── Identity comparison cards ── */
+.id-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin: 36px 0;
+}
+.idc-head {
+  padding: 10px 16px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px; letter-spacing: 0.15em;
+  text-transform: uppercase; font-weight: 500;
+}
+.idc-head.human   { background: var(--green-light); color: var(--green-dim); }
+.idc-head.machine { background: #f0e8f8; color: #5a2080; }
+.idc-row-human   { background: #f8fff8; border: 1px solid #c8e8d0; padding: 12px 16px; font-size: 14px; color: #2a4a30; line-height: 1.6; }
+.idc-row-machine { background: #faf6ff; border: 1px solid #dac8f0; padding: 12px 16px; font-size: 14px; color: #4a2870; line-height: 1.6; }
+@media (max-width: 560px) { .id-compare { grid-template-columns: 1fr; } }
+
+/* ── The horror stat block ── */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  margin: 36px 0;
+}
+.stat-cell {
+  background: var(--bg-dark);
+  padding: 24px 20px;
+  text-align: center;
+}
+.stat-num {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 42px; font-weight: 700;
+  color: var(--green-mid);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.stat-label {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: #5a7a50;
+  line-height: 1.5;
+}
+@media (max-width: 560px) { .stat-row { grid-template-columns: 1fr; } }
+
+/* ── Principle cards ── */
+.principle-list {
+  list-style: none;
+  margin: 32px 0;
+  display: flex; flex-direction: column; gap: 0;
+  border: 1px solid var(--rule-dark);
+}
+.principle-item {
+  display: flex;
+  border-bottom: 1px solid var(--rule);
+  transition: background 0.2s;
+}
+.principle-item:last-child { border-bottom: none; }
+.principle-item:hover { background: var(--bg-paper); }
+.pi-letter {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 28px; font-weight: 700;
+  color: var(--green);
+  padding: 20px 22px;
+  border-right: 1px solid var(--rule);
+  display: flex; align-items: center; justify-content: center;
+  width: 68px; flex-shrink: 0;
+  line-height: 1;
+}
+.pi-body { padding: 18px 20px; }
+.pi-body strong { font-size: 15px; display: block; margin-bottom: 5px; }
+.pi-body p { margin: 0; font-size: 14px; color: var(--text-mid); line-height: 1.55; }
+
+/* ── Code-style token block ── */
+.token-block {
+  margin: 32px 0;
+  background: #0e1410;
+  border: 1px solid #2a3a24;
+  border-left: 3px solid var(--green);
+  overflow: hidden;
+}
+.tb-header {
+  padding: 8px 16px;
+  background: #0a100c;
+  border-bottom: 1px solid #1e2a1a;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px; letter-spacing: 0.1em;
+  color: #4a6a40; text-transform: uppercase;
+}
+.tb-body {
+  padding: 16px 20px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12.5px; line-height: 1.9;
+  color: #8ab890;
+}
+.tb-body .c  { color: #3a5a30; }
+.tb-body .k  { color: var(--green-mid); }
+.tb-body .v  { color: #b8d4b0; }
+.tb-body .bad { color: #e07070; }
+.tb-body .good { color: #60c880; }
+.tb-body .warn { color: #d4a040; }
+
+/* ── Implementation steps ── */
+.impl-steps {
+  margin: 36px 0;
+  counter-reset: impl-counter;
+  display: flex; flex-direction: column; gap: 0;
+}
+.impl-step {
+  display: flex; gap: 0;
+  border: 1px solid var(--rule-dark);
+  border-top: none;
+  background: #fff;
+}
+.impl-step:first-child { border-top: 1px solid var(--rule-dark); }
+.is-num {
+  counter-increment: impl-counter;
+  font-family: 'Libre Baskerville', serif;
+  font-size: 22px; font-weight: 700;
+  color: var(--rule-dark);
+  padding: 20px 18px;
+  border-right: 1px solid var(--rule);
+  display: flex; align-items: flex-start; justify-content: center;
+  width: 58px; flex-shrink: 0; padding-top: 22px;
+  content: counter(impl-counter);
+}
+/* Use actual numbers via data attribute */
+.impl-step:nth-child(1) .is-num::before { content: "1"; }
+.impl-step:nth-child(2) .is-num::before { content: "2"; }
+.impl-step:nth-child(3) .is-num::before { content: "3"; }
+.impl-step:nth-child(4) .is-num::before { content: "4"; }
+.impl-step:nth-child(5) .is-num::before { content: "5"; }
+.impl-step:nth-child(6) .is-num::before { content: "6"; }
+.is-num { color: var(--rule-dark); }
+.is-body { padding: 18px 20px; }
+.is-body strong { font-size: 15px; font-weight: 700; display: block; margin-bottom: 6px; color: #111; }
+.is-body p { margin: 0; font-size: 14px; color: var(--text-mid); line-height: 1.6; }
+
+/* ── Pull quote ── */
+.pull {
+  margin: 52px 0;
+  padding: 0 0 0 24px;
+  border-left: 4px solid var(--green);
+}
+.pull p {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 22px; font-style: italic;
+  color: #111; line-height: 1.45;
+  margin-bottom: 10px;
+}
+.pull cite {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px; color: var(--text-paper);
+  letter-spacing: 0.06em; font-style: normal;
+}
+
+/* ── Closing dark section ── */
+.closing-dark {
+  background: var(--bg-dark);
+  margin: 80px -24px -100px;
+  padding: 64px 24px 80px;
+}
+.closing-dark-inner {
+  max-width: 760px; margin: 0 auto;
+}
+.closing-dark p {
+  font-size: 18px; color: #7a8a72; line-height: 1.78; margin-bottom: 20px;
+}
+.closing-dark p strong { color: #c8d4c0; }
+
+.kicker {
+  margin-top: 40px;
+  font-family: 'Libre Baskerville', serif;
+  font-size: 30px; font-weight: 700;
+  color: #e8e4dc;
+  line-height: 1.25; letter-spacing: -0.02em;
+  padding-top: 40px;
+  border-top: 1px solid #2a3a24;
+}
+.kicker em { font-style: italic; color: var(--green-mid); }
+
+.author-card {
+  margin-top: 52px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 22px;
+  border: 1px solid #2a3a24;
+  background: #0e1410;
+}
+.author-icon {
+  width: 40px; height: 40px;
+  background: #1a2a16;
+  border: 1px solid #2a3a24;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.author-name { font-family: 'Roboto Mono', monospace; font-size: 12px; color: #b8d4b0; }
+.author-role { font-family: 'Roboto Mono', monospace; font-size: 10px; color: #4a6a40; margin-top: 3px; }
+
+/* ── Footer ── */
+footer {
+  background: #0a100c;
+  padding: 24px;
+  text-align: center;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: #2a3a24;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .ledger-header-row,
+  .ledger-row {
+    grid-template-columns: 160px 110px 70px 1fr;
+  }
+  .lh-cell:nth-child(5),
+  .lh-cell:nth-child(6),
+  .lr-cell:nth-child(5) { display: none; }
+  /* keep last cell (status) */
+  .ledger-row { grid-template-columns: 160px 110px 70px 1fr 100px; }
+  .lh-cell:nth-child(5) { display: flex; }
+  .lr-cell:nth-child(5) { display: flex; }
+  .lh-cell:nth-child(6),
+  .lr-cell:nth-child(6) { display: none; }
+}
+@media (max-width: 640px) {
+  .hero-top { padding: 40px 20px 20px; }
+  .ledger-wrap { padding: 0 20px; }
+  .hero-strip { padding: 12px 20px; gap: 16px; }
+  .ledger-header-row,
+  .ledger-row {
+    grid-template-columns: 1fr 100px 90px;
+  }
+  .lh-cell:not(:first-child):not(:nth-child(2)):not(:last-child) { display: none; }
+  .lr-cell:not(:first-child):not(:nth-child(2)):not(:last-child) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ledger-row { transition: none; }
+  .l-badge.risk { animation: none; }
+  .lf-blink { animation: none; }
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<!-- ══════════════ HERO ══════════════ -->
+<header class="hero">
+  <div class="hero-rules"></div>
+
+  <div class="hero-top">
+    <div class="hero-eyebrow">Non-Human Identity · Service Accounts · Zero Trust · PAM</div>
+    <h1>The Identities<br>That <em>Never Sleep,</em><br>Never Rotate,<br>and Nobody Owns</h1>
+    <p class="hero-sub">Your Zero Trust program covers users with MFA and devices with posture checks. It almost certainly ignores the thousands of service accounts, API tokens, and machine certificates doing privileged work in the background, right now, without any of those controls.</p>
+  </div>
+
+  <!-- THE LEDGER -->
+  <div class="ledger-wrap">
+    <div class="ledger-header-row">
+      <div class="lh-cell">Account / Token</div>
+      <div class="lh-cell">Last Rotated</div>
+      <div class="lh-cell">MFA</div>
+      <div class="lh-cell">Owner</div>
+      <div class="lh-cell">Privilege</div>
+      <div class="lh-cell">Status</div>
+    </div>
+
+    <div class="ledger-body" id="ledgerBody">
+      <!-- Rows injected by JS -->
+    </div>
+
+    <div class="ledger-footer">
+      <span class="lf-count" id="ledgerCount">— LOADING ACCESS LOG —</span>
+      <span class="lf-note"><span class="lf-blink"></span> 3 CRITICAL ACCOUNTS DETECTED</span>
+    </div>
+  </div>
+
+  <div class="hero-strip">
+    <span class="hs-item"><strong>45:1</strong> machine-to-human identity ratio in cloud-native orgs</span>
+    <span class="hs-item"><strong>84%</strong> of breaches involve a privileged credential</span>
+    <span class="hs-item"><strong>Average age</strong> of a service account: 4.2 years</span>
+    <span class="hs-item"><strong>MFA coverage</strong> on service accounts: near zero</span>
+  </div>
+</header>
+
+<!-- ══════════════ ARTICLE ══════════════ -->
+<article class="article">
+
+  <p>Every Zero Trust conversation starts with the same picture: a user, an identity provider, an MFA prompt, a device posture check, a conditional access policy. The human identity is verified, the session is granted, and the controls are logged. It's a model that has improved enterprise security measurably.</p>
+
+  <p>Now open your Active Directory and filter for accounts whose names start with <code style="font-family:'Roboto Mono',monospace;font-size:14px;color:var(--green)">svc_</code>. Look at when their passwords were last changed. Look at their group memberships. Look at who their manager is in the directory.</p>
+
+  <p>This is the other identity problem — and it's larger, older, and more dangerous than the human one. <strong>Non-human identities now outnumber human identities in most enterprise environments by a wide margin.</strong> They authenticate constantly, carry significant privilege, and operate completely outside the MFA-and-posture-check model that Zero Trust was built around. They are the gap in your program that attackers know about and practitioners rarely discuss.</p>
+
+  <!-- Section 1 -->
+  <div class="sec">
+    <div class="sec-rule"></div>
+    <div class="sec-tag">The Landscape</div>
+    <h2>What We Mean by Non-Human Identity</h2>
+  </div>
+
+  <p>The category is broader than most teams realise. Non-human identities include anything that authenticates to a system without a person directly behind the keyboard at that moment:</p>
+
+  <div class="id-compare">
+    <div><div class="idc-head human">Human Identity</div></div>
+    <div><div class="idc-head machine">Non-Human Identity</div></div>
+    <div><div class="idc-row-human">Active Directory user accounts with a known employee behind them. Subject to HR lifecycle — provisioned on hire, deprovisioned on exit.</div></div>
+    <div><div class="idc-row-machine">Service accounts in AD used by applications, scripts, scheduled tasks, and backup agents. No HR lifecycle. Often outlive the application they were created for.</div></div>
+    <div><div class="idc-row-human">Single sign-on sessions via Azure AD / Okta. Covered by MFA, conditional access, risk-based authentication.</div></div>
+    <div><div class="idc-row-machine">API keys and tokens embedded in application configs, CI/CD pipelines, IaC scripts, Lambda functions. No MFA possible. Often in plaintext in repositories.</div></div>
+    <div><div class="idc-row-human">Human-operated privileged accounts in PAM vaults. Session-recorded, time-bounded, approval-gated.</div></div>
+    <div><div class="idc-row-machine">Machine certificates issued to servers, containers, network devices, IoT endpoints. Valid for years. No owner in most certificate management systems.</div></div>
+    <div><div class="idc-row-human">Federated identities from partners and vendors. Covered by identity federation policies.</div></div>
+    <div><div class="idc-row-machine">Workload identities — Kubernetes service accounts, AWS IAM roles, Azure Managed Identities. Growing faster than any other category. Rarely inventoried.</div></div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-cell">
+      <div class="stat-num">45×</div>
+      <div class="stat-label">More machine identities than human in cloud-native environments</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num">1,847</div>
+      <div class="stat-label">Days since the oldest service account in your directory was last audited — probably</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num">0</div>
+      <div class="stat-label">Service accounts in the average enterprise covered by MFA or a PAM vault</div>
+    </div>
+  </div>
+
+  <!-- Section 2 -->
+  <div class="sec">
+    <div class="sec-rule"></div>
+    <div class="sec-tag">Why They're Dangerous</div>
+    <h2>The Properties That Make Non-Human Identities a Threat Vector</h2>
+  </div>
+
+  <p>It's not that service accounts are inherently insecure. It's that the properties necessary for them to do their jobs make them structurally resistant to every control in the standard security toolkit.</p>
+
+  <h3>They Cannot Use MFA</h3>
+
+  <p>Multi-factor authentication requires an out-of-band channel — a phone, a hardware token, an authenticator app. A service account that runs a nightly database backup job at 2 AM cannot receive an Authenticator push. The options are either exempt it from MFA entirely (the universal choice) or break the automation. Every enterprise chooses the former. This means your MFA policy, which covers 100% of human logins, covers 0% of service account authentications.</p>
+
+  <p>An attacker who compromises a service account credential faces no second factor. They authenticate exactly as the legitimate service does — same IP range (probably a server subnet, not geo-anomalous), same account name, same time of day if they're patient. The authentication logs look identical to legitimate activity.</p>
+
+  <h3>Nobody Owns Them</h3>
+
+  <p>Service accounts are created for a project, an application, a vendor integration. The engineer who created it moves to another team. The application gets rewritten. The vendor changes their integration method. The original purpose evaporates. The account remains, active, with whatever privilege it was granted on day one.</p>
+
+  <div class="callout red">
+    <div class="callout-label">⚠ The Orphan Account Problem</div>
+    <p>Studies consistently find that 30–50% of service accounts in mature enterprise environments have no identifiable owner in any CMDB, ITSM, or directory attribute. These accounts have full credentials, active passwords, and ongoing authentication — with no human responsible for reviewing or revoking them. They are permanently unattended privileged access.</p>
+  </div>
+
+  <h3>They're Over-Privileged by Design</h3>
+
+  <p>When a service account is provisioned, the path of least resistance is to give it enough privilege to definitely work — which in practice means Domain Admin, local admin on all servers, or a database role with full access to every schema. Scoping permissions to exactly what the service needs requires knowing exactly what the service does, which requires documentation that usually doesn't exist, which requires time that the project didn't have.</p>
+
+  <p>The result: a service account running a file synchronisation job has Domain Admin rights. Not because anyone decided it needed them — because nobody decided otherwise, and DA was the safe choice that wouldn't cause support tickets.</p>
+
+  <h3>Credentials Live Everywhere — Including Places You've Forgotten</h3>
+
+  <div class="token-block">
+    <div class="tb-header">Where non-human credentials actually live in the wild</div>
+    <div class="tb-body">
+<span class="c"># The service account password, 8 years ago:</span>
+<span class="bad">Scheduled Task → Properties → Run As → password field (plaintext, Windows registry)</span>
+<span class="bad">Legacy script:  C:\Scripts\backup.bat → "net use \\fileserver /user:svc_backup P@ssw0rd!"</span>
+<span class="bad">Web.config:     &lt;connectionString&gt; ... password=Backup2017! ... &lt;/connectionString&gt;</span>
+<span class="bad">GitHub repo:    config/prod.env → BACKUP_SVC_PASSWORD=Backup2017!  (committed 2019, never removed)</span>
+
+<span class="c"># API tokens embedded in automation:</span>
+<span class="bad">Ansible playbook: vars/main.yml → api_token: "sk-live-4f9a2b..."  (unencrypted)</span>
+<span class="bad">Jenkins pipeline: credentials stored in job config XML, readable by any admin</span>
+<span class="warn">Terraform state:  terraform.tfstate → sensitive values in plaintext JSON</span>
+
+<span class="c"># What it should look like:</span>
+<span class="good">Azure Key Vault reference:   {{ secrets.BACKUP_SVC_TOKEN }}  ← fetched at runtime, never stored</span>
+<span class="good">Managed Identity auth:       No credential at all — Azure assigns identity to workload</span>
+<span class="good">HashiCorp Vault dynamic:     Short-lived credential, generated per-request, auto-revoked</span>
+    </div>
+  </div>
+
+  <div class="pull">
+    <p>"The credential that exfiltrates your data is probably not the one your threat model considered. It's the one your backup script has been using since 2017."</p>
+    <cite>— The pattern in most post-breach forensic reports</cite>
+  </div>
+
+  <!-- Section 3 -->
+  <div class="sec">
+    <div class="sec-rule"></div>
+    <div class="sec-tag">Architecture</div>
+    <h2>What Zero Trust Actually Means for Machine Identities</h2>
+  </div>
+
+  <p>The Zero Trust principles that apply to human identities — verify explicitly, use least privilege, assume breach — apply equally to non-human identities. The implementation is different because the mechanisms are different, but the conceptual model transfers directly.</p>
+
+  <div class="diagram-wrap">
+    <div class="dw-bar">
+      <span class="dw-dot" style="background:#d62828"></span>
+      <span class="dw-dot" style="background:#e07b00"></span>
+      <span class="dw-dot" style="background:#2d6a4f"></span>
+      <span class="dw-title">Figure 01 — Zero Trust Control Plane for Non-Human Identities</span>
+    </div>
+    <div class="dw-body">
+      <div class="mermaid">
+flowchart TD
+    subgraph DISCOVER["Discover & Classify"]
+        D1["AD Service Account Audit\n↳ Age · Owner · Last auth · Privilege"]
+        D2["Secret Scanning\n↳ Repos · Config files · CI/CD pipelines"]
+        D3["Certificate Inventory\n↳ Expiry · Issuer · Scope · Owner"]
+        D4["Workload Identity Map\n↳ K8s SA · AWS IAM · Azure MI"]
+    end
+
+    subgraph CONTROL["Enforce Zero Trust"]
+        C1["Vault Everything\n↳ HashiCorp · Azure KV · CyberArk\n↳ No static creds in configs"]
+        C2["Dynamic Secrets\n↳ Short TTL · Auto-rotate · Per-request"]
+        C3["Least Privilege\n↳ JIT elevation · Scoped roles\n↳ No standing DA"]
+        C4["mTLS Workload Auth\n↳ SPIFFE/SPIRE · Service Mesh\n↳ Certificate = identity"]
+    end
+
+    subgraph MONITOR["Monitor Continuously"]
+        M1["Behavioral Baseline\n↳ Auth patterns · Access scope · Schedule"]
+        M2["Anomaly Detection\n↳ Off-hours · New dest · Priv escalation"]
+        M3["Lifecycle Enforcement\n↳ Auto-expire · Re-attestation\n↳ Orphan account detection"]
+    end
+
+    DISCOVER --> CONTROL --> MONITOR
+    MONITOR -->|"Drift detected"| CONTROL
+
+    style DISCOVER fill:#f8fff8,color:#1a3a1a,stroke:#2d6a4f
+    style CONTROL fill:#f0e8ff,color:#2a1060,stroke:#7c3aed
+    style MONITOR fill:#fff8f0,color:#3a1a00,stroke:#e07b00
+      </div>
+    </div>
+  </div>
+
+  <p>The three phases aren't a one-time project. They form a continuous loop — and the monitoring phase frequently reveals new identities that need to re-enter the discover phase. Non-human identity sprawl is a living problem, not a one-time audit target.</p>
+
+  <h3>The SPIFFE/SPIRE Model: Cryptographic Workload Identity</h3>
+
+  <p>For workload-to-workload authentication — the service mesh, the microservices, the container-to-database call — the most robust current approach is the SPIFFE (Secure Production Identity Framework for Everyone) standard, implemented via SPIRE.</p>
+
+  <p>The principle: every workload gets a cryptographically attested identity — a SPIFFE Verifiable Identity Document (SVID), essentially a short-lived X.509 certificate — issued by a trusted authority that has verified the workload's origin (which Kubernetes namespace, which AWS account, which VM image hash). Workloads authenticate to each other using mTLS with these certificates. No passwords. No static tokens. No API keys. The certificate <em>is</em> the identity, it's bound to the workload's provenance, and it expires in hours.</p>
+
+  <div class="diagram-wrap">
+    <div class="dw-bar">
+      <span class="dw-dot" style="background:#d62828"></span>
+      <span class="dw-dot" style="background:#e07b00"></span>
+      <span class="dw-dot" style="background:#2d6a4f"></span>
+      <span class="dw-title">Figure 02 — SPIFFE/SPIRE Workload Identity Flow</span>
+    </div>
+    <div class="dw-body">
+      <div class="mermaid">
+sequenceDiagram
+    participant W1 as Workload A
+    participant SA as SPIRE Agent
+    participant SS as SPIRE Server
+    participant W2 as Workload B
+
+    W1->>SA: Request SVID (workload attestation)
+    SA->>SS: Attest workload identity (node + workload selectors)
+    SS-->>SA: Issue short-lived SVID (X.509, TTL 1hr)
+    SA-->>W1: Deliver SVID + trust bundle
+
+    W1->>W2: mTLS connection (present SVID as cert)
+    W2->>W2: Verify SVID against SPIFFE trust bundle
+    W2-->>W1: Mutual auth complete — session established
+
+    Note over W1,W2: No passwords. No API tokens. No static keys.
+    Note over W1,W2: Certificate expires in 1 hour. Auto-rotated.
+    Note over W1,W2: Compromise of one workload does not yield reusable credentials.
+      </div>
+    </div>
+  </div>
+
+  <div class="callout green">
+    <div class="callout-label">ℹ Why Short TTL Changes Everything</div>
+    <p>A credential that expires in one hour has a fundamentally different risk profile than one that never expires. Even if an attacker exfiltrates the SVID, they have at most 60 minutes to use it before it's worthless. Compare that to a service account password last rotated in 2019: the attacker has effectively permanent access. TTL is the most impactful single variable in non-human identity security.</p>
+  </div>
+
+  <!-- Section 4 -->
+  <div class="sec">
+    <div class="sec-rule"></div>
+    <div class="sec-tag">Implementation</div>
+    <h2>Building the Program: Where to Start</h2>
+  </div>
+
+  <p>The gap between "we have a PAM tool" and "we have Zero Trust for non-human identities" is significant. Most enterprises are somewhere between the two. The path forward is phased — and the first phase is the one most teams skip:</p>
+
+  <ul class="impl-steps">
+    <li class="impl-step">
+      <div class="is-num"></div>
+      <div class="is-body">
+        <strong>Inventory everything before touching anything</strong>
+        <p>Run a full AD audit: every account with a service account naming convention, every account with a non-interactive login type, every account with no manager attribute, every account with a password over 365 days old. Run secret scanning across your repos (GitHub Advanced Security, GitGuardian, Trufflesecurity). Export your certificate inventory. Map your Kubernetes service accounts. You will find things that surprise you.</p>
+      </div>
+    </li>
+    <li class="impl-step">
+      <div class="is-num"></div>
+      <div class="is-body">
+        <strong>Assign an owner to every identity — make ownerlessness a policy violation</strong>
+        <p>Every service account, API token, and machine certificate needs a human owner who is responsible for reviewing and re-attesting it annually. Build this into your CMDB or PAM vault. Ownerless accounts are flagged automatically and escalated to the relevant team lead. Orphan accounts get disabled after 30 days without an owner claim.</p>
+      </div>
+    </li>
+    <li class="impl-step">
+      <div class="is-num"></div>
+      <div class="is-body">
+        <strong>Migrate static credentials to a vault — no new hardcoded secrets</strong>
+        <p>HashiCorp Vault, Azure Key Vault, AWS Secrets Manager, CyberArk Conjur. Pick one and make it the only acceptable place for a secret to live. Enforce this via pipeline controls — secret scanning in CI/CD gates, IaC scanning in Terraform/Bicep pipelines. New secrets are vault-fetched at runtime. Existing hardcoded secrets get a migration deadline, not a pass.</p>
+      </div>
+    </li>
+    <li class="impl-step">
+      <div class="is-num"></div>
+      <div class="is-body">
+        <strong>Enable Group Managed Service Accounts (gMSA) for Windows services</strong>
+        <p>For Windows service accounts running IIS, SQL Server, scheduled tasks, and background services, gMSA eliminates the password management problem entirely. The domain controller manages the password automatically on a rolling schedule (default 30 days). The application never knows the password. No human ever knows the password. No credential to steal.</p>
+      </div>
+    </li>
+    <li class="impl-step">
+      <div class="is-num"></div>
+      <div class="is-body">
+        <strong>Adopt managed identities for cloud workloads — eliminate API keys</strong>
+        <p>Azure Managed Identities, AWS IAM Roles for Service Accounts (IRSA), GCP Workload Identity Federation. For any cloud workload, these mechanisms assign a cryptographic identity at the infrastructure level — no API key to generate, rotate, or leak. An Azure VM with a Managed Identity authenticates to Key Vault by presenting its Azure-signed token. No credential exists to be stolen.</p>
+      </div>
+    </li>
+    <li class="impl-step">
+      <div class="is-num"></div>
+      <div class="is-body">
+        <strong>Monitor authentication behavior — establish baselines and alert on deviation</strong>
+        <p>A service account that authenticates from 2–3 AM on weekdays should never authenticate at 2 PM on a Sunday from a new source IP. SIEM rules for service account anomalies are straightforward to write and high-value to alert on — the signal-to-noise ratio is far better than for human account alerts because legitimate service account behavior is highly predictable and repetitive.</p>
+      </div>
+    </li>
+  </ul>
+
+  <div class="callout amber">
+    <div class="callout-label">⚡ The Tooling Landscape</div>
+    <p><strong>PAM / Vaulting:</strong> CyberArk (enterprise standard), HashiCorp Vault (developer-friendly, cloud-native), Delinea Secret Server. <strong>Workload identity:</strong> SPIRE (open source SPIFFE), Istio/Linkerd service mesh (mTLS), AWS IRSA, Azure Managed Identity. <strong>Secret scanning:</strong> GitHub Advanced Security, GitGuardian, Trufflesecurity Trufflehog. <strong>Certificate management:</strong> Venafi, Keyfactor, AWS Private CA. <strong>AD audit:</strong> Tenable.ad (formerly Alsid), BloodHound Enterprise, Microsoft Defender for Identity.</p>
+  </div>
+
+  <!-- Closing -->
+  <div class="closing-dark">
+    <div class="closing-dark-inner">
+      <p>The Zero Trust maturity models all converge on the same gap when you push past the first tier: <strong>human identity is largely solved, or at least solvable. Non-human identity is the next frontier</strong> — and most programs haven't seriously started.</p>
+
+      <p>Every service account with a five-year-old password and Domain Admin rights is a standing invitation. Every API key hardcoded in a configuration file that was committed to a repository and never rotated is a credential waiting to be found. Every orphaned account with no owner is an identity with nobody watching it — which is exactly the kind of identity an attacker prefers to use.</p>
+
+      <p>The sophistication of your MFA deployment and your conditional access policies is real progress. It just doesn't apply to the identities that are already inside, already privileged, and already operating without any of those controls.</p>
+
+      <div class="kicker">
+        You know who your people are.<br>
+        Do you know <em>what</em> is acting on their behalf?
+      </div>
+
+      <div class="author-card">
+        <div class="author-icon">🛡</div>
+        <div>
+          <div class="author-name">Network Security Engineer</div>
+          <div class="author-role">15+ years · Zero Trust · PAM · Active Directory Security · Abu Dhabi, UAE</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</article>
+
+<footer>
+  Non-Human Identity · Service Accounts · Zero Trust · PAM · SPIFFE · Machine Credentials
+</footer>
+
+<script>
+  // Reading progress
+  window.addEventListener('scroll', () => {
+    const d = document.documentElement;
+    document.getElementById('progress').style.width =
+      (d.scrollTop / (d.scrollHeight - d.clientHeight) * 100) + '%';
+  });
+
+  // Ledger rows — the hero data table
+  const rows = [
+    { name: 'svc_sqlbackup_prod',   rotated: '38 days ago',   mfa: 'None', owner: 'J. Thomas (IT)',     priv: 'DB Owner',      status: 'active', cls: '' },
+    { name: 'svc_monitoring_agt',   rotated: '92 days ago',   mfa: 'None', owner: 'Ops Team',          priv: 'Local Admin',   status: 'active', cls: '' },
+    { name: 'api_key_salesforce_01',rotated: '224 days ago',  mfa: 'N/A',  owner: 'Sales Ops',         priv: 'API Read/Write', status: 'warn',  cls: '' },
+    { name: 'svc_legacy_erpconn',   rotated: '611 days ago',  mfa: 'None', owner: 'Unknown',           priv: 'Domain User',   status: 'warn',  cls: '' },
+    { name: 'svc_antivirus_scan',   rotated: '14 days ago',   mfa: 'None', owner: 'Security Team',     priv: 'Local Admin',   status: 'active', cls: '' },
+    { name: 'token_github_actions', rotated: 'Never',         mfa: 'N/A',  owner: 'DevOps (departed)', priv: 'Repo Admin',    status: 'risk',  cls: '' },
+    { name: 'svc_fileSync_2018',    rotated: '947 days ago',  mfa: 'None', owner: 'Unknown',           priv: 'Domain Admin',  status: 'risk',  cls: '' },
+    { name: 'svc_backup_2019',      rotated: '1,847 days ago',mfa: 'None', owner: 'Unknown',           priv: 'Domain Admin',  status: 'risk',  cls: 'critical-row' },
+  ];
+
+  const statusMap = {
+    active: { label: 'ACTIVE', badge: 'active' },
+    warn:   { label: 'REVIEW', badge: 'warn' },
+    risk:   { label: 'CRITICAL', badge: 'risk' },
+  };
+
+  const privClass = (p) => {
+    if (p.includes('Domain Admin')) return 'critical';
+    if (p.includes('Admin') || p.includes('Owner')) return 'warn';
+    return '';
+  };
+
+  const rotClass = (r) => {
+    if (r === 'Never' || parseInt(r) > 800) return 'critical';
+    if (parseInt(r) > 300) return 'warn';
+    return 'ok';
+  };
+
+  const body = document.getElementById('ledgerBody');
+
+  rows.forEach((row, i) => {
+    const el = document.createElement('div');
+    el.className = 'ledger-row' + (row.cls ? ' ' + row.cls : '');
+    const s = statusMap[row.status];
+    el.innerHTML = `
+      <div class="lr-cell name">${row.name}</div>
+      <div class="lr-cell ${rotClass(row.rotated)}">${row.rotated}</div>
+      <div class="lr-cell ${row.mfa === 'None' ? 'critical' : 'dim'}">${row.mfa}</div>
+      <div class="lr-cell ${row.owner === 'Unknown' ? 'critical' : ''}">${row.owner}</div>
+      <div class="lr-cell ${privClass(row.priv)}">${row.priv}</div>
+      <div class="lr-cell"><span class="l-badge ${s.badge}">${s.label}</span></div>
+    `;
+    body.appendChild(el);
+
+    setTimeout(() => {
+      el.classList.add('show');
+      if (i === rows.length - 1) {
+        document.getElementById('ledgerCount').textContent =
+          `${rows.length} ACCOUNTS LOADED · ACCESS LOG ${new Date().toISOString().slice(0,10)}`;
+      }
+    }, 300 + i * 180);
+  });
+
+  // Mermaid
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    themeVariables: {
+      primaryColor: '#d8f3dc',
+      primaryTextColor: '#1b4332',
+      primaryBorderColor: '#2d6a4f',
+      lineColor: '#40916c',
+      secondaryColor: '#f0e8ff',
+      tertiaryColor: '#fff8f0',
+      edgeLabelBackground: '#f7f4ee',
+      clusterBkg: '#f0ece3',
+      titleColor: '#1a1a1a',
+      nodeTextColor: '#1a1a1a',
+      signalColor: '#2d6a4f',
+      signalTextColor: '#1a1a1a',
+      actorBkg: '#d8f3dc',
+      actorBorder: '#2d6a4f',
+      actorTextColor: '#1b4332',
+      actorLineColor: '#b7e4c7',
+      noteBkgColor: '#fff8f0',
+      noteTextColor: '#4a3a20',
+    },
+    flowchart: { htmlLabels: true, curve: 'basis', padding: 18 },
+    sequence: { actorMargin: 60, messageMargin: 30, mirrorActors: false }
+  });
+</script>
+</body>
+</html>
