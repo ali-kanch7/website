@@ -9,6 +9,14 @@ const blogPosts = [
     "readTime": "4 min read"
   },
   {
+    "slug": "../posts/tls-inspection-blog",
+    "title": "TLS Inspection at Scale — The Hidden Risks Nobody Talks About",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "June 2026",
+    "readTime": "22 min read"
+  },
+  {
     "slug": "../posts/the-hidden-risks-of-gitops-in-network-security-protecting-your-state-files",
     "title": "The Hidden Risks of GitOps in Network Security",
     "tag": "Security",
@@ -23,6 +31,30 @@ const blogPosts = [
     "excerpt": "Read the latest article.",
     "date": "June 2026",
     "readTime": "4 min read"
+  },
+  {
+    "slug": "../posts/ot-it-convergence-blog",
+    "title": "The Purdue Model Is Lying to You — OT/IT Convergence Security",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "June 2026",
+    "readTime": "15 min read"
+  },
+  {
+    "slug": "../posts/non-human-identity-blog",
+    "title": "Zero Trust for Non-Human Identities — The Accounts Nobody Is Watching",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "June 2026",
+    "readTime": "23 min read"
+  },
+  {
+    "slug": "../posts/nac-beyond-8021x-blog",
+    "title": "NAC Beyond 802.1X — Contextual Posture in a BYOD/IoT World",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "June 2026",
+    "readTime": "22 min read"
   },
   {
     "slug": "../posts/macsec-vs-ipsec-architectural-trade-offs-for-high-speed-line-rate-encryption",
@@ -47,6 +79,14 @@ const blogPosts = [
     "excerpt": "Read the latest article.",
     "date": "June 2026",
     "readTime": "4 min read"
+  },
+  {
+    "slug": "../posts/east-west-traffic-blog",
+    "title": "The Firewall That's Watching the Wrong Door — East-West Traffic Security",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "June 2026",
+    "readTime": "19 min read"
   },
   {
     "slug": "../posts/beyond-the-api-securing-netconf-and-restconf-interfaces-on-legacy-hardware",
