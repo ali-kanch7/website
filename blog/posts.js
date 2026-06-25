@@ -33,6 +33,14 @@ const blogPosts = [
     "readTime": "4 min read"
   },
   {
+    "slug": "../posts/securing-the-control-plane-preventing-resource-exhaustion-attacks-on-ospf-and-bgp-daemons",
+    "title": "Securing the Control Plane: Preventing Resource Exhaustion",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "June 2026",
+    "readTime": "4 min read"
+  },
+  {
     "slug": "../posts/ot-it-convergence-blog",
     "title": "The Purdue Model Is Lying to You — OT/IT Convergence Security",
     "tag": "Security",
