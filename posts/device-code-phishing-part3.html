@@ -426,15 +426,23 @@ footer {
   .fix-row { transition: none; }
   .fix-check { transition: none; }
 }
+.series-nav a.part {
+  text-decoration: none;
+  color: var(--ink-dim);
+}
+.series-nav a.part:hover {
+  background: var(--bg-card);
+  border-color: var(--ink-dim);
+}
 </style>
 </head>
 <body>
 <div id="progress"></div>
 
 <nav class="series-nav">
-  <span class="part">Part 1 — The Setup</span>
+  <a class="part" href="device-code-phishing-part1.html">Part 1 — The Setup</a>
   <span class="sep">→</span>
-  <span class="part">Part 2 — Why MFA Doesn't Help</span>
+  <a class="part" href="device-code-phishing-part2.html">Part 2 — Why MFA Doesn't Help</a>
   <span class="sep">→</span>
   <span class="part active">Part 3 — What Actually Works</span>
 </nav>
