@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Device Code Phishing, Part 1 — The Login Screen That Was Never Actually a Login Screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,500&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #faf8f3;
+  --bg-card:   #f1ede2;
+  --bg-raise:  #e8e2d2;
+  --ink:       #16181d;
+  --ink-soft:  #494d57;
+  --ink-dim:   #8b8d97;
+  --gold:      #b8860b;
+  --gold-light:#fbf3e1;
+  --gold-dim:  #7a5a07;
+  --slate:     #3b5266;
+  --slate-light:#eaeff2;
+  --slate-dim: #25394a;
+  --rule:      #ddd5c0;
+  --rule-dark: #c7bc9e;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 17.5px;
+  line-height: 1.78;
+  -webkit-font-smoothing: antialiased;
+}
+
+#progress {
+  position: fixed; top: 0; left: 0;
+  height: 3px; width: 0%;
+  background: var(--gold);
+  z-index: 999;
+  transition: width 0.1s linear;
+}
+
+/* ── Series nav ── */
+.series-nav {
+  max-width: 1000px; margin: 0 auto;
+  padding: 24px 32px 0;
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.08em;
+  color: var(--ink-dim);
+}
+.series-nav .part {
+  padding: 4px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--rule-dark);
+}
+.series-nav .part.active { background: var(--gold); color: #fff; border-color: var(--gold); font-weight: 600; }
+.series-nav .sep { color: var(--rule-dark); }
+
+/* ══════════════ HERO ══════════════ */
+.hero {
+  padding: 48px 32px 0;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.hero-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+  margin-bottom: 24px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-tag::before { content: ''; width: 24px; height: 1px; background: var(--gold-dim); }
+
+.hero h1 {
+  font-family: 'Source Serif 4', serif;
+  font-size: clamp(32px, 5.2vw, 60px);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  margin-bottom: 24px;
+  max-width: 800px;
+}
+.hero h1 em { font-style: italic; font-weight: 500; color: var(--gold-dim); }
+
+.hero-sub {
+  font-size: 19px;
+  color: var(--ink-soft);
+  max-width: 620px;
+  line-height: 1.6;
+  margin-bottom: 48px;
+}
+
+/* ── The Device Code Demo Widget — signature element ── */
+.demo-widget {
+  background: #fff;
+  border: 1px solid var(--rule-dark);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 60px;
+  box-shadow: 0 2px 24px rgba(0,0,0,0.04);
+}
+.demo-toggle-bar {
+  display: flex;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--rule);
+}
+.demo-toggle-btn {
+  flex: 1;
+  padding: 14px 18px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+}
+.demo-toggle-btn.active {
+  color: var(--ink);
+  background: #fff;
+  border-bottom-color: var(--gold);
+  font-weight: 600;
+}
+.demo-toggle-btn:hover:not(.active) { background: var(--rule); }
+
+.demo-body {
+  padding: 36px 32px;
+  text-align: center;
+}
+
+.demo-context {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 20px;
+}
+
+.demo-screen {
+  background: var(--slate-dim);
+  border-radius: 8px;
+  padding: 32px 28px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+.demo-screen-icon { font-size: 28px; margin-bottom: 14px; }
+.demo-screen h4 {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px; font-weight: 600;
+  color: #fff; margin-bottom: 10px;
+}
+.demo-screen p {
+  font-size: 13px; color: #b8c4cf; margin-bottom: 18px; line-height: 1.5;
+}
+.demo-screen .url {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; color: #7ec4e8;
+  margin-bottom: 16px;
+}
+.demo-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #fff;
+  background: rgba(255,255,255,0.08);
+  border: 1px dashed rgba(255,255,255,0.3);
+  border-radius: 6px;
+  padding: 14px 20px;
+  display: inline-block;
+}
+
+.demo-caption {
+  margin-top: 22px;
+  font-size: 13.5px;
+  color: var(--ink-dim);
+  max-width: 440px;
+  margin-left: auto; margin-right: auto;
+  line-height: 1.55;
+}
+.demo-caption strong { color: var(--ink); }
+
+/* ══════════════ ARTICLE ══════════════ */
+.article {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 0 24px 100px;
+}
+
+p { margin-bottom: 22px; }
+strong { color: var(--ink); font-weight: 600; }
+em { font-style: italic; }
+
+.meter-head {
+  margin-top: 76px;
+  margin-bottom: 30px;
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+}
+.meter-num {
+  font-family: 'Source Serif 4', serif;
+  font-size: 42px;
+  font-weight: 600;
+  color: var(--gold-dim);
+  line-height: 1;
+  flex-shrink: 0;
+  min-width: 64px;
+}
+.meter-head-text { padding-bottom: 4px; border-bottom: 1px solid var(--rule); flex: 1; }
+.meter-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-dim); margin-bottom: 6px;
+}
+h2 {
+  font-family: 'Source Serif 4', serif;
+  font-size: 26px; font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em; line-height: 1.25;
+}
+h3 {
+  font-family: 'Source Serif 4', serif;
+  font-size: 19px; font-weight: 600;
+  color: var(--ink);
+  margin-top: 40px; margin-bottom: 14px;
+}
+
+.term-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  background: var(--slate-light);
+  color: var(--slate-dim);
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.callout {
+  margin: 36px 0;
+  border-left: 3px solid;
+  padding: 18px 24px;
+  border-radius: 0 6px 6px 0;
+}
+.callout-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  margin-bottom: 8px; font-weight: 500;
+}
+.callout p { margin-bottom: 0; font-size: 15.5px; line-height: 1.65; }
+.callout.slate { background: var(--slate-light); border-color: var(--slate); }
+.callout.slate .callout-label { color: var(--slate-dim); }
+.callout.gold  { background: var(--gold-light); border-color: var(--gold); }
+.callout.gold  .callout-label { color: var(--gold-dim); }
+
+/* Step-by-step flow list */
+.flow-list {
+  list-style: none;
+  margin: 32px 0;
+  display: flex; flex-direction: column; gap: 0;
+  border: 1px solid var(--rule-dark);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.flow-item {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  border-bottom: 1px solid var(--rule);
+  background: #fff;
+}
+.flow-item:last-child { border-bottom: none; }
+.flow-item.bad { background: var(--gold-light); }
+.flow-num {
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Source Serif 4', serif;
+  font-size: 20px; font-weight: 600;
+  color: var(--ink-dim);
+  border-right: 1px solid var(--rule);
+  background: var(--bg-card);
+}
+.flow-item.bad .flow-num { color: var(--gold-dim); background: var(--gold-light); border-right-color: var(--rule-dark); }
+.flow-body { padding: 16px 20px; }
+.flow-body strong { display: block; font-size: 15px; margin-bottom: 4px; }
+.flow-body p { margin: 0; font-size: 14px; color: var(--ink-soft); line-height: 1.55; }
+
+.pull {
+  margin: 48px 0;
+  padding: 0 0 0 24px;
+  border-left: 4px solid var(--ink);
+}
+.pull p {
+  font-family: 'Source Serif 4', serif;
+  font-size: 22px; font-style: italic; font-weight: 500;
+  color: var(--ink); line-height: 1.42;
+  margin-bottom: 8px;
+}
+.pull cite {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--ink-dim);
+  letter-spacing: 0.05em; font-style: normal;
+}
+
+.closing { margin-top: 80px; padding-top: 44px; border-top: 1px solid var(--rule); }
+.closing p { font-size: 18px; line-height: 1.78; margin-bottom: 20px; }
+
+.kicker {
+  margin-top: 40px;
+  font-family: 'Source Serif 4', serif;
+  font-size: 27px; font-weight: 600;
+  color: var(--ink); line-height: 1.3;
+}
+.kicker em { font-style: italic; color: var(--gold-dim); font-weight: 500; }
+
+.next-part {
+  margin-top: 36px;
+  padding: 20px 24px;
+  background: var(--slate-light);
+  border: 1px solid var(--slate);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.next-part-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--slate-dim); flex-shrink: 0;
+}
+.next-part-title {
+  font-family: 'Source Serif 4', serif;
+  font-size: 16px; font-weight: 600;
+  color: var(--ink);
+}
+
+.source-note {
+  margin-top: 36px;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--ink-dim);
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.7;
+}
+
+.author-card {
+  margin-top: 36px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.author-icon {
+  width: 40px; height: 40px;
+  background: var(--bg-raise);
+  border: 1px solid var(--rule-dark);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.author-name { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink); }
+.author-role { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-dim); margin-top: 3px; }
+
+footer {
+  padding: 28px 24px;
+  text-align: center;
+  border-top: 1px solid var(--rule);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+@media (max-width: 600px) {
+  .hero h1 { font-size: 28px; }
+  h2 { font-size: 21px; }
+  .meter-num { font-size: 32px; min-width: 48px; }
+  .demo-code { font-size: 22px; letter-spacing: 0.08em; }
+  .demo-body { padding: 28px 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-toggle-btn { transition: none; }
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<nav class="series-nav">
+  <span class="part active">Part 1 — The Setup</span>
+  <span class="sep">→</span>
+  <span class="part">Part 2 — Why MFA Doesn't Help</span>
+  <span class="sep">→</span>
+  <span class="part">Part 3 — What Actually Works</span>
+</nav>
+
+<!-- ══════════════ HERO ══════════════ -->
+<header class="hero">
+  <div class="hero-tag">Device Code Phishing · Part 1 of 3</div>
+  <h1>The Login Screen That Was <em>Never Actually</em> a Login Screen</h1>
+  <p class="hero-sub">You've used this exact screen before — on your smart TV, setting up a streaming app. Now attackers are sending it to you by email, and you're completing it correctly every single time.</p>
+
+  <div class="demo-widget">
+    <div class="demo-toggle-bar">
+      <button class="demo-toggle-btn active" id="btnTv">📺 Setting up a TV app</button>
+      <button class="demo-toggle-btn" id="btnEmail">✉️ An email asking you to "verify"</button>
+    </div>
+    <div class="demo-body">
+      <div class="demo-context" id="demoContext">What your smart TV shows you right now</div>
+      <div class="demo-screen">
+        <div class="demo-screen-icon" id="demoIcon">📺</div>
+        <h4 id="demoTitle">Activate Your Device</h4>
+        <p id="demoSubtitle">To finish setup, visit the address below on your phone or computer and enter this code.</p>
+        <div class="demo-screen .url url" id="demoUrl">microsoft.com/devicelogin</div>
+        <div class="demo-code" id="demoCode">XK9Q-7RTM</div>
+      </div>
+      <div class="demo-caption" id="demoCaption">This is the genuine flow — the one your TV, game console, or printer uses every time you sign in without a keyboard. <strong>Nothing about it looks suspicious, because nothing about it is supposed to.</strong></div>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════ ARTICLE ══════════════ -->
+<article class="article">
+
+  <p>You've done this before, even if you've never thought about it once. Setting up Netflix on a new TV, signing into YouTube on a game console, connecting a smart speaker to your account — at some point you've pointed your phone at a website, typed in a short code displayed on a screen, and a few seconds later the TV just... worked. No password typed on a tiny remote-control keyboard. No fumbling with an on-screen alphabet. Just a code, a quick visit to a website, and access granted.</p>
+
+  <p>That moment has a name most people never learn: it's called the <span class="term-chip">OAuth device code flow</span>, and it was built for exactly one reason — to solve the very real problem of signing into an account on a device that has no comfortable way to type. A TV remote is terrible at passwords. A printer has no keyboard at all. So instead of forcing you to type your password into a device, the device shows you a short code, you take that code to a website on a device that's actually good at typing — your phone, your laptop — and you approve the connection there instead.</p>
+
+  <p>It's a genuinely good idea. It's also, as of this year, one of the fastest-growing ways criminals are breaking into business email accounts — and the reason it works so well is unsettling once you see it: <strong>the victim isn't tricked into doing something wrong. They're tricked into doing something completely normal, for the wrong reason.</strong></p>
+
+  <div class="meter-head">
+    <div class="meter-num">01</div>
+    <div class="meter-head-text">
+      <div class="meter-tag">First, the Legitimate Version</div>
+      <h2>Why This Screen Exists at All</h2>
+    </div>
+  </div>
+
+  <p>Picture a smart TV trying to sign into a streaming app. The technically clean way to do this would be an on-screen keyboard — select each letter of your email and password one at a time with a remote control's arrow buttons. It's slow, it's frustrating, and it's exactly the kind of friction that makes people just give up and not bother securing the device properly.</p>
+
+  <p>So engineers came up with something cleverer. The TV doesn't ask you to type your password into it at all. Instead, it:</p>
+
+  <ul class="flow-list">
+    <li class="flow-item">
+      <div class="flow-num">1</div>
+      <div class="flow-body">
+        <strong>Displays a short code and a website address</strong>
+        <p>Something like "go to microsoft.com/devicelogin and enter XK9Q-7RTM." Easy to read, easy to type elsewhere.</p>
+      </div>
+    </li>
+    <li class="flow-item">
+      <div class="flow-num">2</div>
+      <div class="flow-body">
+        <strong>You visit that address on a different device</strong>
+        <p>Your phone, your laptop — something where typing is actually pleasant and where you're probably already logged into your account.</p>
+      </div>
+    </li>
+    <li class="flow-item">
+      <div class="flow-num">3</div>
+      <div class="flow-body">
+        <strong>You type in the code and click "Allow"</strong>
+        <p>Since you're already signed in on that device, there's often no password to re-enter at all — just a single confirmation click.</p>
+      </div>
+    </li>
+    <li class="flow-item">
+      <div class="flow-num">4</div>
+      <div class="flow-body">
+        <strong>The TV quietly receives full access in the background</strong>
+        <p>The website and the TV were talking to each other the whole time, waiting for your approval. The moment you click "Allow," the TV gets a token — proof that it's allowed to act as you — without ever seeing your password.</p>
+      </div>
+    </li>
+  </ul>
+
+  <p>That last detail is the one worth sitting with. The TV never learns your password. What it receives instead is called an <span class="term-chip">access token</span> — a separate piece of proof, issued after you approve, that says "this device is allowed to act on this person's behalf." It's actually a more secure design than typing your password into a device you don't fully trust. Smart TVs, game consoles, and IoT devices everywhere rely on this same pattern, and for its intended job — letting low-trust hardware get authenticated access without ever handling your password — it works well.</p>
+
+  <div class="callout slate">
+    <div class="callout-label">The detail that matters for everything after this</div>
+    <p>Notice what the entire flow depends on: the human approving it has no real way to know <em>what</em> they're actually approving access to. They just see a code, a familiar-looking website, and an "Allow" button. The design assumes the only thing asking for that approval is a TV sitting in your living room. It has no built-in way to ask: "wait, who is actually on the other end of this code?"</p>
+  </div>
+
+  <div class="meter-head">
+    <div class="meter-num">02</div>
+    <div class="meter-head-text">
+      <div class="meter-tag">The Turn</div>
+      <h2>Then Someone Realized the TV Wasn't Required</h2>
+    </div>
+  </div>
+
+  <p>Here's the uncomfortable realization that turned a convenience feature into an attack: <strong>nothing about this flow actually checks that a real device triggered it.</strong> The website doesn't know or care whether the code came from a smart TV, a printer, a game console, or a person sitting at a laptop somewhere else in the world who simply asked Microsoft's own servers, completely legitimately, to generate one.</p>
+
+  <p>So the attack doesn't forge anything. It doesn't need to. Here's what actually happens, step by step, and notice that every single step uses a real, legitimate Microsoft system doing exactly what it was built to do:</p>
+
+  <ul class="flow-list">
+    <li class="flow-item bad">
+      <div class="flow-num">1</div>
+      <div class="flow-body">
+        <strong>The attacker requests a device code — for themselves, not for you</strong>
+        <p>Using nothing more than a normal request to Microsoft's own authentication system, the attacker generates a real, valid code. This is the exact same code a TV would receive. It's genuine.</p>
+      </div>
+    </li>
+    <li class="flow-item bad">
+      <div class="flow-num">2</div>
+      <div class="flow-body">
+        <strong>The attacker emails that code to you, dressed as something routine</strong>
+        <p>An IT support message, a calendar invite, a "verify your security settings" notice, a vendor onboarding step. The framing varies; the underlying ask is always the same — "go to this real Microsoft page and enter this code."</p>
+      </div>
+    </li>
+    <li class="flow-item bad">
+      <div class="flow-num">3</div>
+      <div class="flow-body">
+        <strong>You go to the real Microsoft page and enter the real code</strong>
+        <p>This is the part worth pausing on. You're not on a fake website. You're not entering your password into a lookalike page. Every single thing your browser shows you is completely genuine.</p>
+      </div>
+    </li>
+    <li class="flow-item bad">
+      <div class="flow-num">4</div>
+      <div class="flow-body">
+        <strong>You approve a sign-in request — for a session that isn't actually yours</strong>
+        <p>You think you're confirming "yes, this is me, let this device sign in." What you're actually confirming is "yes, give the holder of this code full access to my account." The token doesn't go to a TV. It goes straight to the attacker, who's been sitting there, refreshing the page, waiting for exactly this moment.</p>
+      </div>
+    </li>
+  </ul>
+
+  <div class="callout gold">
+    <div class="callout-label">Why this is so different from ordinary phishing</div>
+    <p>Classic phishing relies on a mistake — a fake login page that looks almost right, a misspelled domain, a moment of inattention. Here, there is no mistake to make. The page is real. The code is real. The approval button is real. <strong>You did everything correctly, and that's precisely what handed your account over.</strong> The deception isn't in the technology. It's entirely in the story the email tells you about why you're doing this in the first place.</p>
+  </div>
+
+  <p>This is why security teams describe it as targeting the wrong layer entirely. It doesn't try to steal your password. It doesn't try to guess your password. It walks straight past the part of the system designed to protect your password, because it never needed your password at all. What it's after sits one step later — the proof of approval that gets handed out <em>after</em> a successful login, the part every system assumes is safe precisely because, by that point, the hard work of authentication is supposed to be finished.</p>
+
+  <div class="pull">
+    <p>The attack doesn't break the lock. It hands you the key through a window, dressed as a maintenance request, and asks you to politely open the door yourself.</p>
+    <cite>— the entire mechanism, in one sentence</cite>
+  </div>
+
+  <h3>Why this caught on so quickly in 2026 specifically</h3>
+
+  <p>This technique isn't brand new — researchers documented the basic idea years ago, and for a while it stayed mostly in the toolkit of patient, well-resourced state-linked hacking groups, the kind willing to spend real effort crafting a believable lure for one specific target. What changed this year is availability. Commercial phishing kits — the same underground marketplaces that already sell ready-made fake login pages to anyone with a few hundred dollars — added this exact technique as a standard feature. What used to require real technical skill to pull off now ships as a point-and-click product.</p>
+
+  <p>That shift from "rare, skilled, targeted" to "common, packaged, automatic" is the part of this story that should actually concern you, and it's also exactly where Part 2 of this series picks up — because once you understand why this attack works, the next question is unavoidable: if it doesn't touch your password at all, what does that mean for the second-factor app on your phone, or the physical security key you were told would make you safe?</p>
+
+  <div class="closing">
+    <p>None of this means the device code flow itself is a bad idea, or that the engineers who built it made a mistake. It means a genuinely useful tool, built for a world of TVs and printers, is now being aimed at a different target: a person at a keyboard, reading an email that looks routine, doing exactly what twenty other legitimate emails have asked them to do this month.</p>
+
+    <p>The unsettling part isn't the cleverness of the attacker. It's how little cleverness this actually requires once the lure is believable. There's no malware to detect, no fake page to spot, no password to mistype into the wrong field. Just a code, a real website, and a click — same as setting up a TV, except this time, the TV was never really there.</p>
+
+    <div class="kicker">
+      The screen was never lying to you.<br>
+      It just never told you <em>who</em> was actually asking.
+    </div>
+
+    <div class="next-part">
+      <span class="next-part-label">Next →</span>
+      <span class="next-part-title">Part 2: Why Your Password, Your MFA App, and Even Your Passkey Don't Matter Here</span>
+    </div>
+
+    <div class="source-note">
+      Sourced from Microsoft Defender Security Research advisories, Push Security and LevelBlue threat research, and Microsoft Threat Intelligence campaign data, current as of June 2026.
+    </div>
+
+    <div class="author-card">
+      <div class="author-icon">🛡</div>
+      <div>
+        <div class="author-name">Ali Asgar Kanchwala</div>
+        <div class="author-role">15+ years · Network Security · Identity & Access Threats · Abu Dhabi, UAE</div>
+      </div>
+    </div>
+  </div>
+
+</article>
+
+<footer>
+  Device Code Phishing · OAuth Security · Identity Threats · Series Part 1 of 3
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const d = document.documentElement;
+    document.getElementById('progress').style.width =
+      (d.scrollTop / (d.scrollHeight - d.clientHeight) * 100) + '%';
+  });
+
+  const btnTv = document.getElementById('btnTv');
+  const btnEmail = document.getElementById('btnEmail');
+  const demoContext = document.getElementById('demoContext');
+  const demoIcon = document.getElementById('demoIcon');
+  const demoTitle = document.getElementById('demoTitle');
+  const demoSubtitle = document.getElementById('demoSubtitle');
+  const demoCaption = document.getElementById('demoCaption');
+
+  function showTv() {
+    btnTv.classList.add('active');
+    btnEmail.classList.remove('active');
+    demoContext.textContent = 'What your smart TV shows you right now';
+    demoIcon.textContent = '📺';
+    demoTitle.textContent = 'Activate Your Device';
+    demoSubtitle.textContent = 'To finish setup, visit the address below on your phone or computer and enter this code.';
+    demoCaption.innerHTML = 'This is the genuine flow — the one your TV, game console, or printer uses every time you sign in without a keyboard. <strong>Nothing about it looks suspicious, because nothing about it is supposed to.</strong>';
+  }
+
+  function showEmail() {
+    btnTv.classList.remove('active');
+    btnEmail.classList.add('active');
+    demoContext.textContent = 'What lands in your inbox instead';
+    demoIcon.textContent = '✉️';
+    demoTitle.textContent = 'Activate Your Device';
+    demoSubtitle.textContent = 'To finish setup, visit the address below on your phone or computer and enter this code.';
+    demoCaption.innerHTML = 'Same website. Same code format. Same screen, pixel for pixel. <strong>The only thing that changed is who actually requested it — and that part is invisible to you.</strong>';
+  }
+
+  btnTv.addEventListener('click', showTv);
+  btnEmail.addEventListener('click', showEmail);
+</script>
+</body>
+</html>

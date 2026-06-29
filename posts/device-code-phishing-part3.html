@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Device Code Phishing, Part 3 — What Actually Works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,500&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #faf8f3;
+  --bg-card:   #f1ede2;
+  --bg-raise:  #e8e2d2;
+  --ink:       #16181d;
+  --ink-soft:  #494d57;
+  --ink-dim:   #8b8d97;
+  --gold:      #b8860b;
+  --gold-light:#fbf3e1;
+  --gold-dim:  #7a5a07;
+  --slate:     #3b5266;
+  --slate-light:#eaeff2;
+  --slate-dim: #25394a;
+  --green:     #2e6b4f;
+  --green-light:#eaf4ee;
+  --rule:      #ddd5c0;
+  --rule-dark: #c7bc9e;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 17.5px;
+  line-height: 1.78;
+  -webkit-font-smoothing: antialiased;
+}
+
+#progress {
+  position: fixed; top: 0; left: 0;
+  height: 3px; width: 0%;
+  background: var(--gold);
+  z-index: 999;
+  transition: width 0.1s linear;
+}
+
+.series-nav {
+  max-width: 1000px; margin: 0 auto;
+  padding: 24px 32px 0;
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.08em;
+  color: var(--ink-dim);
+  flex-wrap: wrap;
+}
+.series-nav .part {
+  padding: 4px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--rule-dark);
+}
+.series-nav .part.active { background: var(--gold); color: #fff; border-color: var(--gold); font-weight: 600; }
+.series-nav .sep { color: var(--rule-dark); }
+
+/* ══════════════ HERO ══════════════ */
+.hero {
+  padding: 48px 32px 0;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.hero-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+  margin-bottom: 24px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-tag::before { content: ''; width: 24px; height: 1px; background: var(--gold-dim); }
+
+.hero h1 {
+  font-family: 'Source Serif 4', serif;
+  font-size: clamp(30px, 5vw, 56px);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  margin-bottom: 24px;
+  max-width: 800px;
+}
+.hero h1 em { font-style: italic; font-weight: 500; color: var(--gold-dim); }
+
+.hero-sub {
+  font-size: 19px;
+  color: var(--ink-soft);
+  max-width: 640px;
+  line-height: 1.6;
+  margin-bottom: 48px;
+}
+
+/* ── Checklist widget — the signature element for Part 3 ── */
+.fix-widget {
+  background: #fff;
+  border: 1px solid var(--rule-dark);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 60px;
+  box-shadow: 0 2px 24px rgba(0,0,0,0.04);
+}
+.fix-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 20px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--rule);
+}
+.fix-dot { width: 8px; height: 8px; border-radius: 50%; }
+.fix-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-dim); flex: 1;
+}
+.fix-body { padding: 10px 8px; }
+.fix-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 120px;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.fix-row:last-child { border-bottom: none; }
+.fix-row:hover { background: var(--bg-card); }
+.fix-check {
+  width: 22px; height: 22px;
+  border-radius: 5px;
+  border: 2px solid var(--rule-dark);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: transparent;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.fix-row.checked .fix-check {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.fix-label { font-size: 14.5px; color: var(--ink); font-weight: 500; }
+.fix-row.checked .fix-label { color: var(--ink-dim); text-decoration: line-through; }
+.fix-impact {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: right;
+  color: var(--gold-dim);
+  font-weight: 600;
+}
+.fix-row.checked .fix-impact { color: var(--rule-dark); }
+.fix-summary {
+  padding: 16px 22px;
+  background: var(--green-light);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--green);
+  font-weight: 500;
+  text-align: center;
+}
+@media (max-width: 560px) {
+  .fix-row { grid-template-columns: 32px 1fr; }
+  .fix-impact { display: none; }
+}
+
+/* ══════════════ ARTICLE ══════════════ */
+.article {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 0 24px 100px;
+}
+
+p { margin-bottom: 22px; }
+strong { color: var(--ink); font-weight: 600; }
+em { font-style: italic; }
+
+.meter-head {
+  margin-top: 76px;
+  margin-bottom: 30px;
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+}
+.meter-num {
+  font-family: 'Source Serif 4', serif;
+  font-size: 42px;
+  font-weight: 600;
+  color: var(--gold-dim);
+  line-height: 1;
+  flex-shrink: 0;
+  min-width: 64px;
+}
+.meter-head-text { padding-bottom: 4px; border-bottom: 1px solid var(--rule); flex: 1; }
+.meter-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-dim); margin-bottom: 6px;
+}
+h2 {
+  font-family: 'Source Serif 4', serif;
+  font-size: 26px; font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em; line-height: 1.25;
+}
+h3 {
+  font-family: 'Source Serif 4', serif;
+  font-size: 19px; font-weight: 600;
+  color: var(--ink);
+  margin-top: 40px; margin-bottom: 14px;
+}
+
+.term-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  background: var(--slate-light);
+  color: var(--slate-dim);
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.callout {
+  margin: 36px 0;
+  border-left: 3px solid;
+  padding: 18px 24px;
+  border-radius: 0 6px 6px 0;
+}
+.callout-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  margin-bottom: 8px; font-weight: 500;
+}
+.callout p { margin-bottom: 0; font-size: 15.5px; line-height: 1.65; }
+.callout.slate { background: var(--slate-light); border-color: var(--slate); }
+.callout.slate .callout-label { color: var(--slate-dim); }
+.callout.gold  { background: var(--gold-light); border-color: var(--gold); }
+.callout.gold  .callout-label { color: var(--gold-dim); }
+.callout.green { background: var(--green-light); border-color: var(--green); }
+.callout.green .callout-label { color: var(--green); }
+
+/* Step-by-step config box (mimics admin console steps) */
+.config-box {
+  margin: 32px 0;
+  background: var(--slate-dim);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.config-header {
+  padding: 12px 20px;
+  background: #1a2a38;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #8aa8c0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.config-steps { padding: 20px 24px; }
+.config-step {
+  display: flex; gap: 12px;
+  padding: 8px 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: #d8e4ee;
+  line-height: 1.6;
+}
+.config-step .cs-num { color: #6ea8d8; flex-shrink: 0; }
+.config-step .cs-path { color: #f0d090; }
+
+/* Stat banner */
+.stat-banner {
+  margin: 40px 0;
+  background: var(--green-light);
+  border: 1px solid #b8d8c4;
+  border-radius: 8px;
+  padding: 26px 28px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.stat-big {
+  font-family: 'Source Serif 4', serif;
+  font-size: 46px; font-weight: 700;
+  color: var(--green);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.stat-desc { font-size: 15px; color: var(--ink-soft); line-height: 1.55; }
+.stat-desc strong { color: var(--ink); }
+@media (max-width: 520px) {
+  .stat-banner { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .stat-big { font-size: 36px; }
+}
+
+/* Pitfall list */
+.pitfall-list {
+  list-style: none;
+  margin: 32px 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.pitfall-item {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  background: var(--bg-card);
+  border: 1px solid var(--rule-dark);
+  overflow: hidden;
+}
+.pitfall-item:first-child { border-radius: 6px 6px 0 0; }
+.pitfall-item:last-child  { border-radius: 0 0 6px 6px; }
+.pitfall-icon {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--gold-light);
+  border-right: 1px solid var(--rule-dark);
+  font-size: 14px;
+}
+.pitfall-body { padding: 14px 18px; }
+.pitfall-body strong { display: block; font-size: 14.5px; margin-bottom: 4px; }
+.pitfall-body p { margin: 0; font-size: 13.5px; color: var(--ink-soft); line-height: 1.55; }
+
+.pull {
+  margin: 48px 0;
+  padding: 0 0 0 24px;
+  border-left: 4px solid var(--ink);
+}
+.pull p {
+  font-family: 'Source Serif 4', serif;
+  font-size: 22px; font-style: italic; font-weight: 500;
+  color: var(--ink); line-height: 1.42;
+  margin-bottom: 8px;
+}
+.pull cite {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--ink-dim);
+  letter-spacing: 0.05em; font-style: normal;
+}
+
+.closing { margin-top: 80px; padding-top: 44px; border-top: 1px solid var(--rule); }
+.closing p { font-size: 18px; line-height: 1.78; margin-bottom: 20px; }
+
+.kicker {
+  margin-top: 40px;
+  font-family: 'Source Serif 4', serif;
+  font-size: 27px; font-weight: 600;
+  color: var(--ink); line-height: 1.3;
+}
+.kicker em { font-style: italic; color: var(--gold-dim); font-weight: 500; }
+
+.series-recap {
+  margin-top: 40px;
+  padding: 24px 26px;
+  background: var(--bg-card);
+  border: 1px solid var(--rule-dark);
+  border-radius: 8px;
+}
+.series-recap-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-dim); margin-bottom: 14px;
+}
+.recap-row {
+  display: flex; gap: 12px; align-items: baseline;
+  margin-bottom: 10px;
+  font-size: 14.5px;
+}
+.recap-row:last-child { margin-bottom: 0; }
+.recap-row .rp { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--gold-dim); flex-shrink: 0; min-width: 50px; }
+
+.source-note {
+  margin-top: 36px;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--ink-dim);
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.7;
+}
+
+.author-card {
+  margin-top: 36px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.author-icon {
+  width: 40px; height: 40px;
+  background: var(--bg-raise);
+  border: 1px solid var(--rule-dark);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.author-name { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink); }
+.author-role { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-dim); margin-top: 3px; }
+
+footer {
+  padding: 28px 24px;
+  text-align: center;
+  border-top: 1px solid var(--rule);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+@media (max-width: 600px) {
+  .hero h1 { font-size: 27px; }
+  h2 { font-size: 21px; }
+  .meter-num { font-size: 32px; min-width: 48px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fix-row { transition: none; }
+  .fix-check { transition: none; }
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<nav class="series-nav">
+  <span class="part">Part 1 — The Setup</span>
+  <span class="sep">→</span>
+  <span class="part">Part 2 — Why MFA Doesn't Help</span>
+  <span class="sep">→</span>
+  <span class="part active">Part 3 — What Actually Works</span>
+</nav>
+
+<!-- ══════════════ HERO ══════════════ -->
+<header class="hero">
+  <div class="hero-tag">Device Code Phishing · Part 3 of 3</div>
+  <h1>What Actually Works — and the Setting <em>Almost Nobody</em> Has Touched</h1>
+  <p class="hero-sub">The good news first: there's a real, well-documented fix for this, and Microsoft has even started turning part of it on by default. The honest news: most organizations still don't know it exists, let alone whether it's working for them.</p>
+
+  <div class="fix-widget">
+    <div class="fix-bar">
+      <span class="fix-dot" style="background:#c44"></span>
+      <span class="fix-dot" style="background:#b8860b"></span>
+      <span class="fix-dot" style="background:#2e6b4f"></span>
+      <span class="fix-title">Tap each fix as you confirm it's in place</span>
+    </div>
+    <div class="fix-body" id="fixBody">
+      <div class="fix-row" data-impact="HIGHEST">
+        <span class="fix-check">✓</span>
+        <span class="fix-label">Block device code flow by Conditional Access (unless genuinely needed)</span>
+        <span class="fix-impact">Highest</span>
+      </div>
+      <div class="fix-row" data-impact="HIGH">
+        <span class="fix-check">✓</span>
+        <span class="fix-label">Confirm Microsoft's default-on managed policy hasn't been quietly disabled</span>
+        <span class="fix-impact">High</span>
+      </div>
+      <div class="fix-row" data-impact="HIGH">
+        <span class="fix-check">✓</span>
+        <span class="fix-label">Turn on Continuous Access Evaluation for real-time token revocation</span>
+        <span class="fix-impact">High</span>
+      </div>
+      <div class="fix-row" data-impact="MEDIUM">
+        <span class="fix-check">✓</span>
+        <span class="fix-label">Watch sign-in logs for device code events from accounts that never use it</span>
+        <span class="fix-impact">Medium</span>
+      </div>
+      <div class="fix-row" data-impact="MEDIUM">
+        <span class="fix-check">✓</span>
+        <span class="fix-label">Teach the one detail that gives this attack away — before, not after</span>
+        <span class="fix-impact">Medium</span>
+      </div>
+    </div>
+    <div class="fix-summary" id="fixSummary">0 of 5 confirmed — most organizations stop at zero</div>
+  </div>
+</header>
+
+<!-- ══════════════ ARTICLE ══════════════ -->
+<article class="article">
+
+  <p>Here's a genuinely good piece of news to start this part with, because the first two parts of this series spent a lot of time on the bad news: this isn't an unsolvable problem. Microsoft, to its credit, looked at this exact attack pattern and built a direct fix for it — not a workaround, not a "be more careful" suggestion, an actual setting that closes the door. The catch, and it's a real one, is that this fix isn't switched on everywhere by default yet, and most organizations have simply never gone looking for it, because nobody told them it existed.</p>
+
+  <p>So this part is the practical half of the series — what the fix actually is, how to turn it on, and the handful of ways even a correctly intentioned setup quietly fails anyway.</p>
+
+  <div class="meter-head">
+    <div class="meter-num">06</div>
+    <div class="meter-head-text">
+      <div class="meter-tag">The Direct Fix</div>
+      <h2>Microsoft Already Built the Off Switch</h2>
+    </div>
+  </div>
+
+  <p>Remember the actual mechanism from Part 1: the entire attack depends on a feature called <span class="term-chip">device code flow</span> existing and being reachable by anyone. Take that feature away from accounts that don't genuinely need it, and the attack has nowhere left to go — there's no code to enter, because no code can be generated against your tenant in the first place. This isn't a clever workaround. It's closing the actual door the attacker walks through.</p>
+
+  <p>Microsoft Entra ID — the identity system behind Microsoft 365 — lets administrators do exactly this through a feature called <span class="term-chip">Conditional Access</span>. The setting that matters here is specifically labeled "Authentication flows," and inside it sits a toggle for device code flow itself. Block it, and any attempt to use that flow against your organization simply fails, for everyone the policy covers.</p>
+
+  <div class="config-box">
+    <div class="config-header">The actual configuration path, in Microsoft's own admin center</div>
+    <div class="config-steps">
+      <div class="config-step"><span class="cs-num">1.</span> Sign in to the Entra admin center as a Conditional Access Administrator</div>
+      <div class="config-step"><span class="cs-num">2.</span> Go to <span class="cs-path">Protection → Conditional Access → Policies → New policy</span></div>
+      <div class="config-step"><span class="cs-num">3.</span> Under <span class="cs-path">Assignments</span>, include all users — except your emergency "break-glass" accounts</div>
+      <div class="config-step"><span class="cs-num">4.</span> Under <span class="cs-path">Target resources</span>, select all resources</div>
+      <div class="config-step"><span class="cs-num">5.</span> Under <span class="cs-path">Conditions → Authentication Flows</span>, switch on Device code flow</div>
+      <div class="config-step"><span class="cs-num">6.</span> Under <span class="cs-path">Grant</span>, choose Block access</div>
+      <div class="config-step"><span class="cs-num">7.</span> Save it in Report-only mode first — confirm nothing legitimate breaks — then switch it to On</div>
+    </div>
+  </div>
+
+  <p>That last step matters more than it looks. Running the policy in "report-only" first means it watches and logs what <em>would</em> have happened without actually blocking anything yet — giving you a chance to discover, before you flip the switch for real, whether some printer, conference room display, or script genuinely depends on this flow. Skip that step and you risk locking out a legitimate piece of office equipment along with every attacker, on the same afternoon.</p>
+
+  <div class="callout green">
+    <div class="callout-label">The encouraging part of this story</div>
+    <p>Microsoft didn't just publish a guide and leave it to individual administrators to find. Starting in February 2025, they began automatically rolling out a pre-built, Microsoft-managed version of exactly this policy to eligible organizations — switched on by default for tenants that show no recent legitimate use of device code flow. If your organization has the right licensing and hasn't actively gone out of its way to disable it, there's a real chance some of this protection is already quietly running in the background, without anyone having configured it by hand.</p>
+  </div>
+
+  <p>That's worth checking rather than assuming, though — head into Conditional Access and look for a policy whose "Created by" column says Microsoft rather than a person's name. If it's there, it's worth understanding rather than ignoring; if it's been switched off, that's worth asking why.</p>
+
+  <div class="meter-head">
+    <div class="meter-num">07</div>
+    <div class="meter-head-text">
+      <div class="meter-tag">The Second Layer</div>
+      <h2>What Happens If a Token Gets Stolen Anyway</h2>
+    </div>
+  </div>
+
+  <p>Blocking the flow outright is the strongest move, but it's not always possible everywhere — some organizations genuinely do rely on device code flow for things like conference room displays, command-line developer tools, or specific older hardware, and blocking it completely would break real work. For those cases, and as a sound second layer even where blocking is possible, there's a feature worth knowing about called <span class="term-chip">Continuous Access Evaluation</span>, usually shortened to CAE.</p>
+
+  <p>The normal way access tokens behave is patient, almost to a fault: once issued, a token is typically trusted for up to an hour before anything rechecks it, which is exactly the kind of quiet window an attacker holding a stolen token benefits from. CAE changes that rhythm. Instead of waiting for the clock to run out, certain critical signals — an account getting disabled, a password reset, a user newly flagged as high-risk, a sign-in suddenly coming from a wildly different location — get evaluated in something close to real time, and access can be cut off within minutes rather than waiting for the token's natural expiry.</p>
+
+  <p>This doesn't stop the initial theft. What it does is shrink the window an attacker actually gets to use what they stole, from "however long the token happens to live" down to "however long it takes your systems to notice something's wrong." For a security team that's actually watching, that's the difference between an attacker quietly working for a day and an attacker getting cut off within minutes of anything looking unusual.</p>
+
+  <div class="meter-head">
+    <div class="meter-num">08</div>
+    <div class="meter-head-text">
+      <div class="meter-tag">Where Good Setups Still Slip</div>
+      <h2>The Quiet Ways This Protection Fails Anyway</h2>
+    </div>
+  </div>
+
+  <p>It would be tidy to end here and say "block the flow, done." Real deployments are messier than that, and there are a few specific, well-documented ways a seemingly correct setup still leaves a gap open. Worth knowing these now, rather than discovering them the hard way later.</p>
+
+  <ul class="pitfall-list">
+    <li class="pitfall-item">
+      <span class="pitfall-icon">⚠</span>
+      <div class="pitfall-body">
+        <strong>A token issued before the block went live can outlive the block itself</strong>
+        <p>Conditional Access is checked at the moment a token is issued, not continuously after the fact. If someone already holds a valid token from before your policy went into effect, simply turning the policy on afterward won't retroactively revoke it — there are documented real cases of administrators seeing a "successful device code sign-in" logged even with a global block supposedly in place, purely because an old token was still being reused. The fix is direct but easy to forget: when you tighten a policy like this, also revoke existing sessions for the accounts it covers.</p>
+      </div>
+    </li>
+    <li class="pitfall-item">
+      <span class="pitfall-icon">⚠</span>
+      <div class="pitfall-body">
+        <strong>Exceptions tend to widen quietly over time</strong>
+        <p>Almost every real rollout needs a short exceptions list — a conference room screen here, a CLI tool there. Each exception is reasonable on its own. The risk is that nobody revisits that list six months later, and what started as two narrowly justified exceptions slowly becomes a forgotten standing gap that nobody remembers granting.</p>
+      </div>
+    </li>
+    <li class="pitfall-item">
+      <span class="pitfall-icon">⚠</span>
+      <div class="pitfall-body">
+        <strong>Service accounts and automated scripts don't follow the same rules</strong>
+        <p>Conditional Access policies aimed at people don't automatically apply to non-human accounts — the service accounts and scripts running quietly in the background. If your organization uses these for any automated task, they need their own, separately considered policy; assuming the "all users" rule already covers them is a common and understandable mistake.</p>
+      </div>
+    </li>
+  </ul>
+
+  <div class="stat-banner">
+    <div class="stat-big">&gt;99%</div>
+    <div class="stat-desc">is the reduction in account compromise risk Microsoft attributes to its baseline Conditional Access policies, including multi-factor authentication requirements — a genuinely strong number, and a reminder that none of this advice replaces good MFA hygiene. It sits <strong>alongside</strong> it, closing a gap that MFA alone was never built to cover.</div>
+  </div>
+
+  <div class="meter-head">
+    <div class="meter-num">09</div>
+    <div class="meter-head-text">
+      <div class="meter-tag">The Human Layer</div>
+      <h2>The One Thing Worth Teaching People, Without Overloading Them</h2>
+    </div>
+  </div>
+
+  <p>Technical controls matter most here, but there's a single, simple thing worth telling anyone in an organization, precisely because it costs nothing to explain and doesn't require understanding OAuth at all: <strong>a legitimate reason to enter a code on a Microsoft sign-in page almost always involves a device sitting right in front of you</strong> — a new TV, a conference room system being set up, a printer being configured. If a code shows up instead through an email, a chat message, or a phone call, asking you to go enter it somewhere, with no actual device anywhere nearby that's waiting for it, that mismatch alone is reason enough to stop and check with IT before typing anything in.</p>
+
+  <p>That's a far more durable lesson than "watch out for suspicious links," because it doesn't depend on spotting a fake website — there isn't one to spot. It depends on noticing a missing device, which is a much simpler thing for a non-technical person to actually catch in the moment.</p>
+
+  <div class="pull">
+    <p>The fix for a trick that works by feeling routine isn't more suspicion. It's one specific question, asked at the right moment: where's the device that's supposed to be asking me this?</p>
+    <cite>— the one habit worth actually teaching</cite>
+  </div>
+
+  <div class="closing">
+    <p>Pull the three parts of this series together and a pattern emerges that goes well beyond this one specific attack. A genuinely useful, well-intentioned feature — built to make life easier for devices that can't type — got quietly repurposed by people who realized it never checked who was actually asking. The defenses everyone already trusted weren't broken by it; they simply weren't standing at the door it walked through. And the fix, once you know where to look, turns out to be a setting that's been sitting in plain sight inside Microsoft's own admin console, switched off for most of the world by default, on by default for a fraction of organizations, and entirely unknown to almost everyone in between.</p>
+
+    <p>None of that is really a story about Microsoft, or even about this one flow specifically. It's a story about how every system, however carefully built, eventually meets someone who reads the fine print of how it actually works rather than how it's supposed to feel — and finds the gap sitting quietly in the space between those two things.</p>
+
+    <div class="kicker">
+      The door was never hidden.<br>
+      Almost nobody had thought to check if it was <em>locked</em>.
+    </div>
+
+    <div class="series-recap">
+      <div class="series-recap-label">The Series, in Three Lines</div>
+      <div class="recap-row"><span class="rp">Part 1</span><span>A real screen, a real code, approved by someone doing everything right.</span></div>
+      <div class="recap-row"><span class="rp">Part 2</span><span>It bypasses MFA and passkeys because it was never asking the question they answer.</span></div>
+      <div class="recap-row"><span class="rp">Part 3</span><span>A real Conditional Access setting closes it — if anyone actually goes looking for it.</span></div>
+    </div>
+
+    <div class="source-note">
+      Sourced from Microsoft Learn documentation on Conditional Access authentication flows and Continuous Access Evaluation, Microsoft's Secure Future Initiative announcements, Sentrium Security, nFlo, Industrial Monitor Direct, and Microsoft Q&A community troubleshooting threads, current as of June 2026.
+    </div>
+
+    <div class="author-card">
+      <div class="author-icon">🛡</div>
+      <div>
+        <div class="author-name">Ali Asgar Kanchwala</div>
+        <div class="author-role">15+ years · Network Security · Identity & Access Threats · Abu Dhabi, UAE</div>
+      </div>
+    </div>
+  </div>
+
+</article>
+
+<footer>
+  Device Code Phishing · Conditional Access · Continuous Access Evaluation · Series Part 3 of 3
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const d = document.documentElement;
+    document.getElementById('progress').style.width =
+      (d.scrollTop / (d.scrollHeight - d.clientHeight) * 100) + '%';
+  });
+
+  const rows = document.querySelectorAll('.fix-row');
+  const summary = document.getElementById('fixSummary');
+
+  function updateSummary() {
+    const checked = document.querySelectorAll('.fix-row.checked').length;
+    if (checked === 0) {
+      summary.textContent = '0 of 5 confirmed — most organizations stop at zero';
+    } else if (checked === rows.length) {
+      summary.textContent = '5 of 5 confirmed — this is a genuinely well-defended tenant';
+    } else {
+      summary.textContent = `${checked} of ${rows.length} confirmed — keep going`;
+    }
+  }
+
+  rows.forEach(row => {
+    row.addEventListener('click', () => {
+      row.classList.toggle('checked');
+      updateSummary();
+    });
+  });
+</script>
+</body>
+</html>

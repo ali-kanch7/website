@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Mythos, 0 to 100 — What It Is, What It Isn't, and Why It Disappeared</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,500&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #fcfaf6;
+  --bg-card:   #f4f1ea;
+  --bg-raise:  #ece7dc;
+  --ink:       #1a1a2e;
+  --ink-soft:  #4a4a5e;
+  --ink-dim:   #8a8a9a;
+  --red:       #c1272d;
+  --red-light: #fdf0ee;
+  --red-dim:   #7a1a1e;
+  --blue:      #2563eb;
+  --blue-light:#eef3fe;
+  --blue-dim:  #1a3f9e;
+  --rule:      #ddd6c4;
+  --rule-dark: #c4bba4;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 17.5px;
+  line-height: 1.78;
+  -webkit-font-smoothing: antialiased;
+}
+
+#progress {
+  position: fixed; top: 0; left: 0;
+  height: 3px; width: 0%;
+  background: var(--red);
+  z-index: 999;
+  transition: width 0.1s linear;
+}
+
+/* ══════════════ HERO ══════════════ */
+.hero {
+  padding: 80px 32px 0;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.hero-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 24px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-tag::before { content: ''; width: 24px; height: 1px; background: var(--red); }
+
+.hero h1 {
+  font-family: 'Fraunces', serif;
+  font-optical-sizing: auto;
+  font-size: clamp(34px, 5.5vw, 66px);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin-bottom: 24px;
+  max-width: 780px;
+}
+.hero h1 em { font-style: italic; font-weight: 500; color: var(--red); }
+
+.hero-sub {
+  font-size: 19px;
+  color: var(--ink-soft);
+  max-width: 620px;
+  line-height: 1.6;
+  margin-bottom: 48px;
+}
+
+/* ── Live status strip ── */
+.status-strip {
+  background: var(--ink);
+  border-radius: 8px;
+  padding: 22px 26px;
+  margin-bottom: 60px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.status-pulse {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--red);
+  flex-shrink: 0;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(193,39,45,0.5); }
+  50%      { box-shadow: 0 0 0 8px rgba(193,39,45,0); }
+}
+.status-text {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12.5px;
+  color: #f0ede4;
+  letter-spacing: 0.02em;
+  line-height: 1.6;
+}
+.status-text strong { color: #fff; font-weight: 500; }
+.status-date {
+  margin-left: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: #8a8a9a;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+@media (max-width: 600px) {
+  .status-date { margin-left: 0; width: 100%; }
+}
+
+/* ── Timeline dots in hero ── */
+.timeline-dots {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 64px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.td-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 130px;
+  position: relative;
+}
+.td-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 7px; left: 50%;
+  width: 130px;
+  height: 1px;
+  background: var(--rule-dark);
+  z-index: 0;
+}
+.td-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--rule-dark);
+  margin-bottom: 10px;
+  z-index: 1;
+  position: relative;
+}
+.td-step.done .td-dot { background: var(--blue); border-color: var(--blue); }
+.td-step.bad .td-dot   { background: var(--red); border-color: var(--red); }
+.td-step.now .td-dot   { background: var(--red); border-color: var(--red); animation: pulse 1.6s ease-in-out infinite; }
+.td-date {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-dim);
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.td-label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: center;
+  line-height: 1.4;
+  padding: 0 6px;
+}
+
+/* ══════════════ ARTICLE ══════════════ */
+.article {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 0 24px 100px;
+}
+
+p { margin-bottom: 22px; }
+strong { color: var(--ink); font-weight: 600; }
+em { font-style: italic; }
+
+/* ── The 0-100 meter section headers ── */
+.meter-head {
+  margin-top: 76px;
+  margin-bottom: 30px;
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+}
+.meter-num {
+  font-family: 'Fraunces', serif;
+  font-size: 44px;
+  font-weight: 600;
+  color: var(--red);
+  line-height: 1;
+  flex-shrink: 0;
+  min-width: 70px;
+}
+.meter-head-text { padding-bottom: 4px; border-bottom: 1px solid var(--rule); flex: 1; }
+.meter-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-dim); margin-bottom: 6px;
+}
+h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 27px; font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em; line-height: 1.25;
+}
+h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 19px; font-weight: 600;
+  color: var(--ink);
+  margin-top: 40px; margin-bottom: 14px;
+}
+
+/* ── Definition card (term + meaning, woven not announced) ── */
+.term-row {
+  display: flex; align-items: baseline; gap: 10px;
+  margin: 6px 0 22px;
+  flex-wrap: wrap;
+}
+.term-chip {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12.5px;
+  background: var(--blue-light);
+  color: var(--blue-dim);
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+/* ── Callouts ── */
+.callout {
+  margin: 36px 0;
+  border-left: 3px solid;
+  padding: 18px 24px;
+  border-radius: 0 6px 6px 0;
+}
+.callout-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  margin-bottom: 8px; font-weight: 500;
+}
+.callout p { margin-bottom: 0; font-size: 15.5px; line-height: 1.65; }
+.callout.blue { background: var(--blue-light); border-color: var(--blue); }
+.callout.blue .callout-label { color: var(--blue-dim); }
+.callout.red  { background: var(--red-light); border-color: var(--red); }
+.callout.red  .callout-label { color: var(--red); }
+
+/* ── Two-column "is / is not" ── */
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin: 36px 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.split-col { padding: 22px 24px; }
+.split-col.yes { background: var(--blue-light); }
+.split-col.no  { background: var(--red-light); }
+.split-head {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  margin-bottom: 14px; font-weight: 500;
+}
+.split-col.yes .split-head { color: var(--blue-dim); }
+.split-col.no  .split-head { color: var(--red); }
+.split-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.split-col li {
+  font-size: 14.5px; line-height: 1.55;
+  padding-left: 16px;
+  position: relative;
+}
+.split-col.yes li::before { content: '+'; position: absolute; left: 0; color: var(--blue-dim); font-weight: 700; }
+.split-col.no li::before  { content: '−'; position: absolute; left: 0; color: var(--red); font-weight: 700; }
+@media (max-width: 560px) { .split { grid-template-columns: 1fr; } }
+
+/* ── Players table (who's who in the saga) ── */
+.player-list {
+  list-style: none;
+  margin: 32px 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.player-item {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  overflow: hidden;
+}
+.player-item:first-child { border-radius: 6px 6px 0 0; }
+.player-item:last-child  { border-radius: 0 0 6px 6px; }
+.player-name {
+  padding: 14px 16px;
+  background: var(--bg-raise);
+  border-right: 1px solid var(--rule);
+  display: flex; align-items: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+.player-desc { padding: 14px 18px; font-size: 14px; color: var(--ink-soft); line-height: 1.55; }
+@media (max-width: 560px) {
+  .player-item { grid-template-columns: 1fr; }
+  .player-name { border-right: none; border-bottom: 1px solid var(--rule); }
+}
+
+/* ── Pull quote ── */
+.pull {
+  margin: 48px 0;
+  padding: 0 0 0 24px;
+  border-left: 4px solid var(--ink);
+}
+.pull p {
+  font-family: 'Fraunces', serif;
+  font-size: 23px; font-style: italic; font-weight: 500;
+  color: var(--ink); line-height: 1.42;
+  margin-bottom: 8px;
+}
+.pull cite {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; color: var(--ink-dim);
+  letter-spacing: 0.05em; font-style: normal;
+}
+
+/* ── Closing ── */
+.closing { margin-top: 80px; padding-top: 44px; border-top: 1px solid var(--rule); }
+.closing p { font-size: 18px; line-height: 1.78; margin-bottom: 20px; }
+
+.kicker {
+  margin-top: 40px;
+  font-family: 'Fraunces', serif;
+  font-size: 28px; font-weight: 600;
+  color: var(--ink); line-height: 1.3;
+}
+.kicker em { font-style: italic; color: var(--red); font-weight: 500; }
+
+.source-note {
+  margin-top: 36px;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--ink-dim);
+  font-family: 'IBM Plex Mono', monospace;
+  line-height: 1.7;
+}
+
+.author-card {
+  margin-top: 36px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.author-icon {
+  width: 40px; height: 40px;
+  background: var(--bg-raise);
+  border: 1px solid var(--rule-dark);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.author-name { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink); }
+.author-role { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--ink-dim); margin-top: 3px; }
+
+footer {
+  padding: 28px 24px;
+  text-align: center;
+  border-top: 1px solid var(--rule);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+@media (max-width: 600px) {
+  .hero h1 { font-size: 30px; }
+  h2 { font-size: 22px; }
+  .meter-num { font-size: 34px; min-width: 50px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-pulse, .td-step.now .td-dot { animation: none; }
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<!-- ══════════════ HERO ══════════════ -->
+<header class="hero">
+  <div class="hero-tag">A Plain-Language Explainer</div>
+  <h1>Claude Mythos, <em>0 to 100</em>:<br>The Model Anthropic Built, Then Pulled Back</h1>
+  <p class="hero-sub">It can find security bugs humans miss. It also got a government to personally shut it off. Here's the whole story, from what it actually is to why it isn't sitting on your screen right now.</p>
+
+  <div class="status-strip">
+    <span class="status-pulse"></span>
+    <span class="status-text"><strong>Current status:</strong> Mythos 5 and its public sibling Fable 5 remain suspended worldwide under a US government order. Anthropic says it's working to restore access; no date is confirmed.</span>
+    <span class="status-date">Last checked · Jun 26, 2026</span>
+  </div>
+
+  <div class="timeline-dots">
+    <div class="td-step done">
+      <div class="td-dot"></div>
+      <div class="td-date">Apr 7</div>
+      <div class="td-label">Mythos Preview disclosed</div>
+    </div>
+    <div class="td-step done">
+      <div class="td-dot"></div>
+      <div class="td-date">Jun 9</div>
+      <div class="td-label">Fable 5 & Mythos 5 launch</div>
+    </div>
+    <div class="td-step bad">
+      <div class="td-dot"></div>
+      <div class="td-date">Jun 10</div>
+      <div class="td-label">Jailbreak claimed</div>
+    </div>
+    <div class="td-step bad">
+      <div class="td-dot"></div>
+      <div class="td-date">Jun 12</div>
+      <div class="td-label">Gov't orders suspension</div>
+    </div>
+    <div class="td-step now">
+      <div class="td-dot"></div>
+      <div class="td-date">Now</div>
+      <div class="td-label">Still offline, talks ongoing</div>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════ ARTICLE ══════════════ -->
+<article class="article">
+
+  <div class="meter-head">
+    <div class="meter-num">0</div>
+    <div class="meter-head-text">
+      <div class="meter-tag">Starting From Nothing</div>
+      <h2>What Even Is a Claude Mythos?</h2>
+    </div>
+  </div>
+
+  <p>Anthropic, the company that makes Claude, has always organized its models into a simple ladder: Haiku for speed, Sonnet for everyday use, Opus for the hardest reasoning work. In April 2026, a fourth rung quietly showed up above Opus, and it wasn't supposed to be public knowledge yet.</p>
+
+  <p>The existence of a model called Mythos leaked through some early blog post drafts in late March. Anthropic, once it became clear the secret was out, confirmed it directly — and the framing was unusual for a tech company talking about its own product. They weren't bragging about a faster chatbot. They were warning, more or less, that they'd built something whose skill at one very specific thing had outpaced their comfort with releasing it.</p>
+
+  <p>That thing was finding security flaws in software. Not flaws someone already knew about — genuinely new ones, the kind a skilled human researcher might spend weeks hunting for. <span class="term-chip">Zero-day vulnerability</span> is the term for this exact kind of flaw: a weakness nobody outside has reported yet, so there's no patch waiting for it. Mythos turned out to be remarkably good at finding them, on its own, across huge piles of code.</p>
+
+  <div class="callout blue">
+    <div class="callout-label">Why this matters before we go further</div>
+    <p>Software has bugs. It always has. What changed is the search process. Instead of a small team of expert humans slowly reading through code, you now have something that can read enormous amounts of it quickly, try things, and tell you which bugs are real and dangerous. That shift — not any single bug — is the actual story.</p>
+  </div>
+
+  <div class="meter-head">
+    <div class="meter-num">25</div>
+    <div class="meter-head-text">
+      <div class="meter-tag">Getting Somewhere</div>
+      <h2>What It Actually Found, in Numbers That Hold Up</h2>
+    </div>
+  </div>
+
+  <p>Anthropic didn't just claim Mythos was good at this — they published their methodology in detail, which is part of why the early reaction from researchers leaned toward "impressed" rather than "skeptical." The setup was straightforward in concept: drop Mythos into a sealed, internet-free environment with a piece of real software, and have it hunt for bugs the way a careful human would — reading the code, forming a hypothesis, actually running the program to test that hypothesis, and either ruling a bug out or building a working proof that it's real.</p>
+
+  <p>A few results from that testing are worth sitting with, because they're concrete rather than vague hype:</p>
+
+  <ul style="margin: 0 0 28px 22px; line-height: 2;">
+    <li>It found a previously unknown, <strong>27-year-old bug in OpenBSD</strong> — an operating system specifically known for being unusually well-audited and hard to crack.</li>
+    <li>Against Firefox's JavaScript engine, it didn't just spot weaknesses; it turned them into working exploits and demonstrated full control over the program in dozens of separate cases.</li>
+    <li>Mozilla, separately, used a preview version of Mythos to find and patch <strong>271 security issues in Firefox</strong> in about two weeks.</li>
+    <li>When human security experts reviewed a sample of nearly 200 of Mythos's bug reports, they agreed with its own severity rating <strong>89% of the time exactly</strong>, and were within one level of agreement <strong>98% of the time</strong> — meaning the model wasn't just finding noise, it was grading its own findings about as well as a person would.</li>
+  </ul>
+
+  <p>None of this means Mythos is flawless or magic. An independent evaluation from the UK's AI Security Institute offered a slightly more tempered view — they didn't find it dramatically better than other top models at individual, isolated security tasks, but they did find it unusually good at stringing together long, multi-step intrusion challenges that nothing else had managed before. That's a more specific and more believable claim than "it's just better at everything," and it's also, in its own way, the more unsettling one.</p>
+
+  <div class="meter-head">
+    <div class="meter-num">50</div>
+    <div class="meter-head-text">
+      <div class="meter-tag">The Halfway Point</div>
+      <h2>So Why Didn't Anthropic Just... Ship It?</h2>
+    </div>
+  </div>
+
+  <p>This is the part that makes Mythos different from a normal product launch. Anthropic has a public framework called the <span class="term-chip">Responsible Scaling Policy</span> — essentially a set of tripwires they've committed to watching for in their own models. If a model crosses a threshold where it could meaningfully help someone cause serious harm, the policy requires extra safeguards before it goes anywhere near the public, regardless of how useful it would otherwise be.</p>
+
+  <p>Mythos tripped that wire specifically around cybersecurity and biology. A tool that can autonomously find and weaponize software vulnerabilities at scale is, by definition, dual-use: the very same skill that lets a defender patch a hundred bugs before attackers find them is the skill that lets an attacker find the one bug nobody's patched yet. Anthropic's read was that handing this directly to the public, unrestricted, was a bigger gamble than they were willing to take — at least not yet, not without a plan.</p>
+
+  <p>So instead of a normal release, they built something narrower: <strong>Project Glasswing</strong>, a coordinated effort where Mythos's vulnerability-hunting power got pointed at the software everyone actually depends on, under supervision, with the people running the affected systems in the loop before anything got made public. Over forty organizations were eventually brought in, including some of the biggest names in tech — Microsoft, Apple, Google, Amazon, Cisco, Nvidia, the Linux Foundation among them.</p>
+
+  <div class="split">
+    <div class="split-col yes">
+      <div class="split-head">What Mythos Is</div>
+      <ul>
+        <li>A general-purpose model that turned out to be exceptionally capable at finding and validating real software vulnerabilities</li>
+        <li>A tool deliberately kept narrow in distribution, routed through vetted partners rather than the open market</li>
+        <li>The basis for Fable 5 — a public-facing sibling with the same brain, but extra layers designed to block its riskiest skills</li>
+        <li>A genuinely new high-water mark in automated vulnerability discovery, by Anthropic's own measurements and some independent ones too</li>
+      </ul>
+    </div>
+    <div class="split-col no">
+      <div class="split-head">What Mythos Is Not</div>
+      <ul>
+        <li>A consumer chatbot you could ever sign up for and use casually</li>
+        <li>A model built specifically and only for hacking — it's a general-purpose model whose security skill was something of a surprising byproduct</li>
+        <li>Proven, beyond dispute, to be categorically smarter at every security task than every rival model — at least one independent lab found a more mixed picture</li>
+        <li>Something that vanished because of a bug in the software — it disappeared because of a government order, which is a very different kind of off switch</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="meter-head">
+    <div class="meter-num">75</div>
+    <div class="meter-head-text">
+      <div class="meter-tag">Things Get Complicated</div>
+      <h2>The Jailbreak Claim That Started the Fire</h2>
+    </div>
+  </div>
+
+  <p>In June, Anthropic took the next step: a public version called <strong>Fable 5</strong> launched alongside the more restricted <strong>Mythos 5</strong>. Same underlying model, different doors. Fable had a layer of automatic classifiers sitting in front of it — small systems trained to notice when a request veered into cybersecurity, biology, or chemistry territory, and quietly hand that one request off to a weaker, less risky model instead of answering directly. Anthropic said this safety net handled fewer than 5% of conversations, meaning almost everyone using Fable was, most of the time, getting the full unrestricted model underneath.</p>
+
+  <p>Within about a day of launch, a well-known figure in the AI red-teaming world — who goes by <strong>Pliny the Liberator</strong> online — announced he'd broken through Fable's safety layer entirely. His method combined a handful of older, known tricks: spelling sensitive words using look-alike characters from other alphabets so filters wouldn't catch them, spreading a risky request out across a long conversation so no single message looked dangerous on its own, dressing the request up as fiction or academic research, and splitting one big ask into several smaller, individually harmless-looking pieces. He also published the system's lengthy internal instruction text — the hidden prompt that shapes how the model behaves — on a public code-sharing site.</p>
+
+  <div class="callout red">
+    <div class="callout-label">Where the dispute actually sits</div>
+    <p>Anthropic didn't deny something happened. They disputed how serious it was. Their position: this was coaxing the model past its own polite refusals — a known weak spot in basically every large language model — rather than disabling the deeper, separate classifier systems built specifically to catch the most dangerous categories of misuse. They said some of what got shared wasn't even genuinely produced by Fable, and that what was real amounted to information already findable through a normal search engine. A narrow gap, in their telling — not an open door.</p>
+  </div>
+
+  <p>Whether that's the full picture is genuinely contested, and it's worth being honest that the public record is incomplete here. What's clearer is what happened next: reporting pointed to security researchers at Amazon independently testing Fable and getting it to produce information useful for planning a cyberattack, and conversations between Amazon's CEO and US officials around that finding. Whatever combination of factors tipped the scale, the government decided it had seen enough.</p>
+
+  <div class="meter-head">
+    <div class="meter-num">100</div>
+    <div class="meter-head-text">
+      <div class="meter-tag">Where Things Stand</div>
+      <h2>The Order, the Shutdown, and the Stalemate</h2>
+    </div>
+  </div>
+
+  <p>On June 12, at 5:21pm Eastern time, Anthropic received a legally binding directive from the US government. It didn't ask Anthropic to fix something or investigate further — it ordered them to cut off access to both Fable 5 and Mythos 5 for any foreign national, anywhere, including Anthropic's own non-US employees. The government's stated basis was national security; the letter reportedly didn't go into detail about exactly what it had seen.</p>
+
+  <p>Here's the part that turned a narrow rule into a sweeping one: <strong>Anthropic has no reliable way to check a user's citizenship in real time at the moment they send a request.</strong> Faced with an order they couldn't comply with selectively, they did the only thing that guaranteed compliance — they switched both models off for every single customer on Earth, American or not. Within hours, a model that had been generally available three days earlier was simply gone.</p>
+
+  <p>Anthropic's public response was unusually blunt for a company complying with its own government. They said plainly that they disagreed with the decision, that they viewed the underlying jailbreak claim as narrow and not the kind of universal break that would justify pulling a commercial product used by hundreds of millions of people, and that they suspected the whole thing was based on a misunderstanding. They complied anyway, while saying so.</p>
+
+  <h3>The cast of characters, if you're trying to keep track</h3>
+
+  <ul class="player-list">
+    <li class="player-item">
+      <div class="player-name">Anthropic</div>
+      <div class="player-desc">Built Mythos, tried to release a safer public version in Fable 5, complied with the shutdown order while publicly disputing it.</div>
+    </li>
+    <li class="player-item">
+      <div class="player-name">Pliny the Liberator</div>
+      <div class="player-desc">Independent AI red-teamer who claimed the jailbreak days after Fable 5's launch and published Fable's internal system prompt.</div>
+    </li>
+    <li class="player-item">
+      <div class="player-name">Amazon</div>
+      <div class="player-desc">Reported in multiple outlets to have separately tested Fable 5 and surfaced findings that reached US officials around the same time as the suspension decision.</div>
+    </li>
+    <li class="player-item">
+      <div class="player-name">US Commerce Dept.</div>
+      <div class="player-desc">Issued the export control directive ordering the suspension, citing national security authorities without public technical detail.</div>
+    </li>
+    <li class="player-item">
+      <div class="player-name">Project Glasswing partners</div>
+      <div class="player-desc">Microsoft, Apple, Google, Cisco, Nvidia, the Linux Foundation, and dozens of others — the vetted group still using Mythos-class access to harden their own software.</div>
+    </li>
+  </ul>
+
+  <p>As of this writing — two weeks into the suspension — both models remain offline. Anthropic staff have publicly and repeatedly shot down rumors of a quiet restoration, confirming the company is serving exactly zero traffic to either model, viral claims online notwithstanding. A few structural dates loom on the calendar: a new identity-verification system Anthropic plans to roll out, and a 60-day window tied to the broader government order, both of which could shape how and when access returns. Whether that return looks like the same Fable 5 that launched, or something with tighter limits attached, isn't settled yet either.</p>
+
+  <div class="pull">
+    <p>A narrow, disputed claim was enough to take two commercially available models offline globally, the same day, for everyone — American citizens included, simply because there was no fast way to separate them from everyone else.</p>
+    <cite>— the part of this story that outlasts the specific jailbreak debate</cite>
+  </div>
+
+  <h3>The part of this that has nothing to do with Mythos specifically</h3>
+
+  <p>Strip away the specific names and what's left is a genuinely new kind of risk for anyone who builds on top of a company's AI model rather than running their own: <strong>the thing you depend on can be switched off by a government, in an afternoon, for reasons that may never be fully public.</strong> That's a different failure mode than a server outage or a missed deadline. It's not Anthropic's server going down — it's Anthropic being legally required to pull the plug regardless of whether they think that's the right call.</p>
+
+  <p>Whether the underlying security concern was real, overstated, or somewhere in between is a question that may take a while to settle, if it ever fully does. What's already settled is that it happened, and that it's possible. That part doesn't depend on whoever turns out to have been right.</p>
+
+  <div class="closing">
+    <p>Strip away the acronyms and the export control language, and the Mythos story is really about a company building something genuinely useful — a tireless, scalable way to find the security holes that have been sitting quietly in widely used software for years or decades — and then discovering that "useful" and "safe to hand to anyone" aren't always the same question, even when you try hard to separate them.</p>
+
+    <p>The technology didn't fail here. If anything, it worked closer to plan than the rollout did. What's still unresolved is something humans have always been bad at, long before AI showed up: agreeing, in public, in real time, on how much risk is too much — and who gets to make that call when the stakes are this unfamiliar.</p>
+
+    <div class="kicker">
+      Mythos didn't get pulled because it failed.<br>
+      It got pulled because, for a few days, <em>nobody could agree on how well it worked.</em>
+    </div>
+
+    <div class="source-note">
+      Sourced from Anthropic's official statements and Mythos system card, reporting from CNBC, Axios, Bloomberg, SecurityWeek, Tech Times, CyberNews, and Wikipedia's account of public events, current as of June 26, 2026. The situation is actively developing; details may change after publication.
+    </div>
+
+    <div class="author-card">
+      <div class="author-icon">🛡</div>
+      <div>
+        <div class="author-name">Ali Asgar Kanchwala</div>
+        <div class="author-role">15+ years · Network Security · AI & Emerging Tech Policy · Abu Dhabi, UAE</div>
+      </div>
+    </div>
+  </div>
+
+</article>
+
+<footer>
+  Claude Mythos · AI Safety Policy · Frontier Model Governance · Explained
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const d = document.documentElement;
+    document.getElementById('progress').style.width =
+      (d.scrollTop / (d.scrollHeight - d.clientHeight) * 100) + '%';
+  });
+</script>
+</body>
+</html>

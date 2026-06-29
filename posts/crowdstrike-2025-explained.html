@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The CrowdStrike 2025 Threat Hunting Report — Explained for Humans</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0d0e12;
+  --bg-card:   #15171e;
+  --bg-raise:  #1c1f29;
+  --red:       #ff3b30;
+  --red-dim:   #4a1410;
+  --red-light: #2a1210;
+  --blue:      #5b9bd5;
+  --blue-dim:  #1a3550;
+  --blue-light:#101e2e;
+  --amber:     #f5a623;
+  --text:      #c8ccd6;
+  --text-bright:#f0f2f6;
+  --text-dim:  #6a7080;
+  --border:    #232633;
+  --border-mid:#2e3242;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Source Sans 3', system-ui, sans-serif;
+  font-size: 17.5px;
+  line-height: 1.78;
+  -webkit-font-smoothing: antialiased;
+}
+
+#progress {
+  position: fixed; top: 0; left: 0;
+  height: 3px; width: 0%;
+  background: linear-gradient(90deg, var(--red), var(--blue));
+  z-index: 999;
+  transition: width 0.1s linear;
+}
+
+/* ══════════════ HERO ══════════════ */
+.hero {
+  min-height: 96vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 90px 32px 60px;
+}
+
+.hero-bg-streak {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 75% 30%, #ff3b3014 0%, transparent 65%),
+    radial-gradient(ellipse 50% 40% at 15% 75%, #5b9bd512 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* Diagonal streak lines echoing the report's cover art, very subtle */
+.streak-svg {
+  position: absolute; inset: 0;
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+.hero-inner {
+  position: relative;
+  max-width: 880px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.hero-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 24px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-tag::before { content: ''; width: 24px; height: 1px; background: var(--red); }
+
+.hero h1 {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: clamp(32px, 5vw, 58px);
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  color: var(--text-bright);
+  margin-bottom: 22px;
+}
+.hero h1 .red  { color: var(--red); }
+.hero h1 .blue { color: var(--blue); }
+
+.hero-sub {
+  font-size: 18px;
+  color: var(--text-dim);
+  max-width: 600px;
+  line-height: 1.6;
+  margin-bottom: 40px;
+}
+
+/* ── Decoder widget ── */
+.decoder {
+  background: var(--bg-card);
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.decoder-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--border);
+}
+.dec-dot { width: 8px; height: 8px; border-radius: 50%; }
+.decoder-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.1em; color: var(--text-dim);
+  margin-left: 4px; text-transform: uppercase;
+}
+.decoder-body { padding: 20px; }
+.decoder-instructions {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--text-dim);
+  margin-bottom: 16px; letter-spacing: 0.04em;
+}
+
+.codename-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.codename-card {
+  position: relative;
+  background: var(--bg-raise);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px 14px;
+  cursor: pointer;
+  min-height: 64px;
+  transition: border-color 0.2s, background 0.2s;
+  overflow: hidden;
+}
+.codename-card:hover { border-color: var(--red); }
+.codename-card.flipped { background: var(--red-light); border-color: var(--red); }
+
+.cc-front, .cc-back {
+  transition: opacity 0.2s ease;
+}
+.cc-front {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px; font-weight: 500;
+  color: var(--text-bright);
+  letter-spacing: 0.02em;
+}
+.cc-front .suffix { color: var(--red); }
+.cc-back {
+  display: none;
+  font-size: 11.5px;
+  color: #ffb8b0;
+  line-height: 1.4;
+  font-family: 'Source Sans 3', sans-serif;
+}
+.codename-card.flipped .cc-front { display: none; }
+.codename-card.flipped .cc-back { display: block; }
+.cc-tap-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--text-dim);
+  margin-top: 4px; letter-spacing: 0.06em;
+}
+.codename-card.flipped .cc-tap-hint { display: none; }
+
+/* ══════════════ ARTICLE ══════════════ */
+.article {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 88px 24px 100px;
+}
+
+p { margin-bottom: 22px; }
+strong { color: var(--text-bright); font-weight: 600; }
+em { font-style: italic; color: var(--text-bright); }
+
+/* ── Section heading ── */
+.sec-head {
+  margin-top: 72px;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sec-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--red);
+  margin-bottom: 8px;
+}
+h2 {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 26px;
+  color: var(--text-bright);
+  letter-spacing: -0.01em; line-height: 1.25;
+}
+h3 {
+  font-family: 'Archivo', sans-serif;
+  font-size: 18px; font-weight: 700;
+  color: var(--text-bright);
+  margin-top: 40px; margin-bottom: 14px;
+}
+
+/* ── Stat callouts (the report's big numbers, recontextualized) ── */
+.stat-banner {
+  margin: 40px 0;
+  background: var(--red-light);
+  border: 1px solid var(--red-dim);
+  border-radius: 6px;
+  padding: 26px 28px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.stat-big {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 52px;
+  color: var(--red);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.stat-desc {
+  font-size: 15px;
+  color: #e8b8b0;
+  line-height: 1.55;
+}
+.stat-desc strong { color: var(--text-bright); }
+@media (max-width: 520px) {
+  .stat-banner { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .stat-big { font-size: 40px; }
+}
+
+/* ── Diagrams ── */
+.diagram-wrap {
+  margin: 44px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.dw-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 18px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--border);
+}
+.dw-dot { width: 8px; height: 8px; border-radius: 50%; }
+.dw-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-dim); flex: 1;
+}
+.dw-body { padding: 26px 18px; overflow-x: auto; }
+.dw-body .mermaid { display: flex; justify-content: center; }
+
+/* ── Adversary case cards ── */
+.case-card {
+  margin: 32px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.case-head {
+  padding: 16px 20px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+}
+.case-codename {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; font-weight: 500;
+  color: var(--text-bright);
+  background: var(--red-dim);
+  padding: 4px 10px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+}
+.case-real-name {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.case-body { padding: 20px; }
+.case-body p { margin-bottom: 14px; font-size: 15.5px; }
+.case-body p:last-child { margin-bottom: 0; }
+
+/* ── Simple definition list ── */
+.def-list {
+  list-style: none;
+  margin: 32px 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.def-item {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.def-item:first-child { border-radius: 4px 4px 0 0; }
+.def-item:last-child  { border-radius: 0 0 4px 4px; }
+.def-term {
+  background: var(--bg-raise);
+  padding: 14px 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px; font-weight: 500;
+  color: var(--blue);
+  border-right: 1px solid var(--border);
+  display: flex; align-items: center;
+}
+.def-val { padding: 14px 18px; font-size: 14.5px; color: var(--text); line-height: 1.55; }
+@media (max-width: 560px) {
+  .def-item { grid-template-columns: 1fr; }
+  .def-term { border-right: none; border-bottom: 1px solid var(--border); }
+}
+
+/* ── Numbered takeaway list ── */
+.takeaway-list {
+  list-style: none;
+  margin: 32px 0;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.takeaway-item {
+  display: flex; gap: 16px; align-items: flex-start;
+  padding: 16px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.tw-num {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 20px;
+  color: var(--red);
+  flex-shrink: 0;
+  width: 28px;
+}
+.tw-body strong { display: block; font-size: 15px; margin-bottom: 4px; color: var(--text-bright); }
+.tw-body p { margin: 0; font-size: 14px; color: var(--text-dim); line-height: 1.55; }
+
+/* ── Pull quote ── */
+.pull {
+  margin: 48px 0;
+  padding: 26px 30px;
+  background: var(--blue-light);
+  border-left: 4px solid var(--blue);
+  border-radius: 0 6px 6px 0;
+}
+.pull p {
+  font-family: 'Archivo', sans-serif;
+  font-size: 20px; font-weight: 600;
+  color: var(--text-bright);
+  line-height: 1.4;
+  margin-bottom: 0;
+}
+
+/* ── Closing ── */
+.closing {
+  margin-top: 76px;
+  padding-top: 44px;
+  border-top: 1px solid var(--border);
+}
+.closing p { font-size: 18px; line-height: 1.78; margin-bottom: 20px; }
+
+.kicker {
+  margin-top: 40px;
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 26px;
+  color: var(--text-bright);
+  line-height: 1.3;
+}
+.kicker .red { color: var(--red); }
+
+.author-card {
+  margin-top: 48px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.author-icon {
+  width: 40px; height: 40px;
+  background: var(--bg-raise);
+  border: 1px solid var(--border-mid);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.author-name { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-bright); }
+.author-role { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+
+/* ── Source note ── */
+.source-note {
+  margin-top: 36px;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.6;
+}
+
+footer {
+  padding: 28px 24px;
+  text-align: center;
+  border-top: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+@media (max-width: 600px) {
+  .hero h1 { font-size: 30px; }
+  h2 { font-size: 22px; }
+  .def-list, .codename-grid { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .codename-card { transition: none; }
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<!-- ══════════════ HERO ══════════════ -->
+<header class="hero">
+  <div class="hero-bg-streak"></div>
+  <svg class="streak-svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+    <line x1="0" y1="0" x2="600" y2="800" stroke="#ff3b30" stroke-width="2"/>
+    <line x1="100" y1="0" x2="700" y2="800" stroke="#5b9bd5" stroke-width="1.5"/>
+    <line x1="1200" y1="0" x2="600" y2="800" stroke="#ff3b30" stroke-width="2"/>
+    <line x1="1100" y1="0" x2="500" y2="800" stroke="#5b9bd5" stroke-width="1.5"/>
+  </svg>
+
+  <div class="hero-inner">
+    <div class="hero-tag">CrowdStrike's 2025 Threat Hunting Report</div>
+    <h1>The Hackers Aren't Breaking In.<br>They're Getting <span class="red">Let In.</span></h1>
+    <p class="hero-sub">CrowdStrike's analysts spent a year watching real intrusions unfold inside real companies. The headline finding: most of the scariest ones didn't involve a single piece of malware. Someone just walked through the front door, because someone else handed them the keys.</p>
+
+    <!-- Codename decoder widget -->
+    <div class="decoder">
+      <div class="decoder-bar">
+        <span class="dec-dot" style="background:#ff3b30"></span>
+        <span class="dec-dot" style="background:#f5a623"></span>
+        <span class="dec-dot" style="background:#5b9bd5"></span>
+        <span class="decoder-title">Who's Who</span>
+      </div>
+      <div class="decoder-body">
+        <div class="decoder-instructions">Every group CrowdStrike tracks gets a two-word codename, and the second word isn't random. Tap one.</div>
+        <div class="codename-grid" id="codenameGrid"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════ ARTICLE ══════════════ -->
+<article class="article">
+
+  <p>Somewhere in the last twelve months, a company's help desk got a phone call from someone who sounded exactly like a stressed employee locked out of their account. Same cadence, same urgency, maybe even the right internal jargon. The help desk did what help desks are trained to do: they helped. A password got reset. Nobody broke down a door, because nobody had to. They were buzzed in.</p>
+
+  <p>That single moment — not a virus, not a clever piece of code, just a phone call that worked — is the real story buried inside CrowdStrike's latest Threat Hunting Report. It's a dense, data-heavy document built for security teams, full of operational codenames and statistics that mean a lot more once you know what they're pointing at. Strip away the formatting and what's underneath is closer to a true-crime account of how people actually get conned at scale in 2025 — and it turns out the cons are getting good.</p>
+
+  <h3>The naming system, once you see it, is kind of brilliant</h3>
+
+  <p>CrowdStrike tracks dozens of hacking groups without ever knowing most of their real names. What they have instead is behavior — the same group tends to reuse the same tools, chase the same kind of victims, and operate out of roughly the same part of the world. So each group gets a two-word codename, and the second word isn't decorative. PANDA means a China-linked group. SPIDER means financially motivated criminals working for themselves rather than any government. CHOLLIMA points to North Korea. KITTEN is Iran, BEAR is Russia, JACKAL is hacktivism rather than a nation at all. The first word is just the individual's nickname — GENESIS, MURKY, SCATTERED — like a case file label.</p>
+
+  <p>Once that clicks, the report stops reading like alphabet soup and starts reading like a cast list. Tap a few names above and the cast starts to take shape: a patient telecom-focused operation here, a smash-and-grab ransomware crew there, a state-run fraud scheme dressed up as a job applicant.</p>
+
+  <h3>The scariest number in the whole report has nothing to do with malware</h3>
+
+  <p>For most people, hacking still looks like the movies — a hooded figure, a wall of green text, some dramatic countdown. CrowdStrike's numbers tell a quieter story.</p>
+
+  <div class="stat-banner">
+    <div class="stat-big">81%</div>
+    <div class="stat-desc"><strong>of serious intrusions involved no malware whatsoever.</strong> No infected file, nothing for antivirus software to flag. The intruder simply logged in with a real password and started working — often indistinguishable, at first glance, from an actual employee having an ordinary day.</div>
+  </div>
+
+  <p>This is the report's real thesis, and it explains why "threat hunting" exists as a job at all. If an attacker never trips a malware signature, no automated system rings a bell. Someone has to go looking — comparing what a login is doing against what that account normally does, noticing the file access pattern that's slightly off, catching the login from a country that account has never touched before. It's less digital forensics and more a very patient form of people-watching, done at the scale of an entire company's network.</p>
+
+  <h3>What actually happens, start to finish</h3>
+
+  <p>CrowdStrike calls a hands-on, human-driven break-in an "interactive intrusion" — the distinction being that nobody's running automated malware and walking away; an actual person is at a keyboard somewhere, adapting in real time. The shape of one, stripped of jargon, looks remarkably consistent across cases:</p>
+
+  <div class="diagram-wrap">
+    <div class="dw-bar">
+      <span class="dw-dot" style="background:#ff3b30"></span>
+      <span class="dw-dot" style="background:#f5a623"></span>
+      <span class="dw-dot" style="background:#5b9bd5"></span>
+      <span class="dw-title">The shape of a hands-on intrusion</span>
+    </div>
+    <div class="dw-body">
+      <div class="mermaid">
+flowchart TD
+    A["Getting in\nA stolen password, a convincing\nphone call, or credentials\nbought from someone else"]
+    B["Settling in\nQuietly making sure there's\na way back, even if\nthis access gets noticed"]
+    C["Looking around\nMoving from the first machine\nto whatever actually matters"]
+    D["Taking what they came for\nFiles, customer records,\nmore credentials to reuse"]
+    E["Reading the room\nAdjusting behavior to match\nwhatever looks normal\nfor that specific company"]
+
+    A --> B --> C --> D
+    B -.-> E
+    C -.-> E
+    D -.-> E
+
+    style A fill:#2a1210,color:#ffb8b0,stroke:#ff3b30
+    style B fill:#2a1c00,color:#f0d090,stroke:#f5a623
+    style C fill:#101e2e,color:#a8c8e8,stroke:#5b9bd5
+    style D fill:#101e2e,color:#a8c8e8,stroke:#5b9bd5
+    style E fill:#15171e,color:#c8ccd6,stroke:#2e3242
+      </div>
+    </div>
+  </div>
+
+  <p>What stands out is how unremarkable each step looks in isolation. There's no moment that resembles breaking a lock. That's exactly the problem — and exactly why a piece of software looking for "broken locks" keeps missing people who were simply handed a key.</p>
+
+  <h3>Four things that actually changed this year</h3>
+
+  <p>Annual threat reports tend to drown good information in statistics nobody outside the field needs. A few numbers from this one are worth holding onto, because each marks a real shift rather than a minor wobble:</p>
+
+  <div class="takeaway-list">
+    <li class="takeaway-item">
+      <div class="tw-num">1</div>
+      <div class="tw-body">
+        <strong>Phone scams are up 442%</strong>
+        <p>Calling a help desk and pretending to be a locked-out employee — or calling an employee while pretending to be the help desk — has become one of the single most effective ways in. It works because it targets a person trained to be helpful, not a piece of infrastructure trained to say no.</p>
+      </div>
+    </li>
+    <li class="takeaway-item">
+      <div class="tw-num">2</div>
+      <div class="tw-body">
+        <strong>Cloud break-ins more than doubled</strong>
+        <p>As companies moved more of their actual work into Microsoft 365, Google Workspace, and similar hosted services, attackers simply followed the work. The office moved online; so did the burglars.</p>
+      </div>
+    </li>
+    <li class="takeaway-item">
+      <div class="tw-num">3</div>
+      <div class="tw-body">
+        <strong>One crew can now go from "in" to ransomware in a single day</strong>
+        <p>SCATTERED SPIDER, a financially driven group with no government backing, has compressed what used to take weeks into about 24 hours — first access to fully locked-up systems and a ransom note.</p>
+      </div>
+    </li>
+    <li class="takeaway-item">
+      <div class="tw-num">4</div>
+      <div class="tw-body">
+        <strong>A North Korea-linked group got hired — legitimately — at 320+ companies</strong>
+        <p>Not through any technical exploit. Through job applications, polished by AI, sometimes backed by real-time deepfake video during interviews. More on this below, because it's the part of the report that's genuinely hard to stop thinking about.</p>
+      </div>
+    </li>
+  </div>
+
+  <h3>The job interview that wasn't one</h3>
+
+  <p>If there's a single case study built to make a non-technical reader sit up, it's this one — and tellingly, it has almost nothing to do with computers in the way people usually imagine hacking.</p>
+
+  <div class="case-card">
+    <div class="case-head">
+      <span class="case-codename">FAMOUS CHOLLIMA</span>
+      <span class="case-real-name">North Korea-linked</span>
+    </div>
+    <div class="case-body">
+      <p>Operatives linked to this group apply for ordinary remote tech jobs. The résumé is AI-polished. The video interview, according to CrowdStrike's findings, sometimes runs through real-time deepfake software that swaps the applicant's actual face and voice for a more palatable one. They interview well. They get hired.</p>
+      <p>From there, they're simply an employee — laptop, login, benefits, the works — quietly funneling a salary back to the regime, or using legitimate internal access for something closer to espionage. CrowdStrike counted this happening at over 320 companies in the past year, a number that's grown 220% since the year before.</p>
+    </div>
+  </div>
+
+  <p>There's no firewall setting that catches this. The fix lives in hiring, not IT — video calls that can't be filtered around, identity checks that go further than a résumé and a Zoom call, an HR process built with the knowledge that the applicant on the other end of the call might not be who the screen says they are.</p>
+
+  <h3>Who's actually getting picked on</h3>
+
+  <p>It's tempting to assume only banks and governments are worth a determined attacker's time. The sector data says otherwise.</p>
+
+  <div class="def-list">
+    <div class="def-item">
+      <div class="def-term">Technology</div>
+      <div class="def-val">The most targeted sector of all, and for a practical reason: a foothold inside one tech company often opens a path into every other company that relies on its software.</div>
+    </div>
+    <div class="def-item">
+      <div class="def-term">Consulting</div>
+      <div class="def-val">Firms with remote access into dozens of client networks at once are, from an attacker's perspective, a master key wearing a suit.</div>
+    </div>
+    <div class="def-item">
+      <div class="def-term">Government</div>
+      <div class="def-val">Up 71% in overall intrusions, with deliberately targeted attacks climbing even faster — a 185% jump — as state-linked groups keep government high on the list.</div>
+    </div>
+    <div class="def-item">
+      <div class="def-term">Telecom</div>
+      <div class="def-val">GLACIAL PANDA's whole approach is patience — slow, quiet infiltration of phone and internet providers, the kind of access that eventually means visibility into millions of people's call records.</div>
+    </div>
+  </div>
+
+  <p>The common thread isn't fame. It's leverage. A mid-sized consulting firm with open doors into forty client networks is, in practice, a far more interesting target than a household name with one network and a strong security team standing in front of it.</p>
+
+  <h3>Two more ways in, neither of them dramatic</h3>
+
+  <div class="case-card">
+    <div class="case-head">
+      <span class="case-codename">GENESIS PANDA</span>
+      <span class="case-real-name">China-linked</span>
+    </div>
+    <div class="case-body">
+      <p>Rather than chase individual applications one at a time, this group goes straight for the control panel companies use to run their cloud infrastructure — the master settings page behind an entire Amazon Web Services or Microsoft Azure setup. Win there, and almost everything else is just a few clicks away.</p>
+    </div>
+  </div>
+
+  <div class="case-card">
+    <div class="case-head">
+      <span class="case-codename">MURKY PANDA</span>
+      <span class="case-real-name">China-linked</span>
+    </div>
+    <div class="case-body">
+      <p>This one skips the front door of the target entirely and walks in through a vendor the target already trusts. If a company has given a contractor or software provider a standing connection into its systems, MURKY PANDA's bet is that nobody's double-checking traffic coming through a door that's already been propped open for years.</p>
+    </div>
+  </div>
+
+  <div class="pull">
+    <p>Almost nothing in this report is really about code. It's about doors that were left open on purpose, for good reasons, by people who never expected anyone to notice.</p>
+  </div>
+
+  <div class="closing">
+    <p>None of this requires becoming a security expert to understand, and that's sort of the point. The report's real argument travels well outside IT departments: the weakest moment in almost any system is the instant one person decides to trust another. A help desk trusting a familiar-sounding voice. A hiring manager trusting a polished résumé and a clear video call. A company trusting a vendor's access without asking when it was last reviewed.</p>
+
+    <p>The tools in this report — cloud control panels, malware-free break-ins, AI-assisted job applications — sound new. The thing being exploited underneath all of it is not. It's just moving faster, and wearing a better disguise, than it used to.</p>
+
+    <div class="kicker">
+      The attackers didn't get better at breaking in.<br>
+      They got better at being <span class="red">believed</span>.
+    </div>
+
+    <div class="source-note">
+      Source: CrowdStrike 2025 Threat Hunting Report, covering observed activity from July 1, 2024 to June 30, 2025.
+    </div>
+
+    <div class="author-card">
+      <div class="author-icon">🛡</div>
+      <div>
+        <div class="author-name">Ali Asgar Kanchwala</div>
+        <div class="author-role">15+ years · Network Security · Threat Landscape Analysis · Abu Dhabi, UAE</div>
+      </div>
+    </div>
+  </div>
+
+</article>
+
+<footer>
+  Threat Intelligence · CrowdStrike Report Explained · Cybersecurity for Everyone
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const d = document.documentElement;
+    document.getElementById('progress').style.width =
+      (d.scrollTop / (d.scrollHeight - d.clientHeight) * 100) + '%';
+  });
+
+  // Codename decoder data
+  const codenames = [
+    { name: 'PANDA', suffix: '🐼', meaning: 'China-linked group. The most active category in this report — includes GENESIS PANDA, MURKY PANDA, GLACIAL PANDA.' },
+    { name: 'SPIDER', suffix: '🕷️', meaning: 'Financially motivated criminals — not tied to any government. In it for the money, usually via ransomware. Includes SCATTERED SPIDER, BLOCKADE SPIDER, GRACEFUL SPIDER.' },
+    { name: 'CHOLLIMA', suffix: '🇰🇵', meaning: 'North Korea-linked. Often focused on stealing money or infiltrating companies as fake employees, like FAMOUS CHOLLIMA.' },
+    { name: 'BEAR', suffix: '🇷🇺', meaning: 'Russia-linked group.' },
+    { name: 'KITTEN', suffix: '🇮🇷', meaning: 'Iran-linked group.' },
+    { name: 'LEOPARD', suffix: '🇵🇰', meaning: 'Pakistan-linked group.' },
+    { name: 'JACKAL', suffix: '✊', meaning: 'Hacktivist — motivated by a political or social cause, not money or a specific government.' },
+    { name: 'CRANE', suffix: '🇰🇷', meaning: 'South Korea-linked group.' },
+    { name: 'BUFFALO', suffix: '🇻🇳', meaning: 'Vietnam-linked group.' },
+    { name: 'SPHINX', suffix: '🇪🇬', meaning: 'Egypt-linked group.' },
+  ];
+
+  const grid = document.getElementById('codenameGrid');
+  codenames.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'codename-card';
+    card.innerHTML = `
+      <div class="cc-front">${c.name} <span class="suffix">${c.suffix}</span><div class="cc-tap-hint">tap to decode</div></div>
+      <div class="cc-back">${c.meaning}</div>
+    `;
+    card.addEventListener('click', () => card.classList.toggle('flipped'));
+    grid.appendChild(card);
+  });
+
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      darkMode: true,
+      background: '#15171e',
+      primaryColor: '#1c1f29',
+      primaryTextColor: '#c8ccd6',
+      primaryBorderColor: '#2e3242',
+      lineColor: '#5b9bd5',
+      secondaryColor: '#101e2e',
+      tertiaryColor: '#0d0e12',
+      edgeLabelBackground: '#15171e',
+      clusterBkg: '#15171e',
+      titleColor: '#c8ccd6',
+      nodeTextColor: '#c8ccd6',
+    },
+    flowchart: { htmlLabels: true, curve: 'basis', padding: 18 }
+  });
+</script>
+</body>
+</html>

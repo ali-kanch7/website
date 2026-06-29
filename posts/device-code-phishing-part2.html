@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Device Code Phishing, Part 2 — Why Your Password, Your MFA App, and Even Your Passkey Don't Matter Here</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,500&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #faf8f3;
+  --bg-card:   #f1ede2;
+  --bg-raise:  #e8e2d2;
+  --ink:       #16181d;
+  --ink-soft:  #494d57;
+  --ink-dim:   #8b8d97;
+  --gold:      #b8860b;
+  --gold-light:#fbf3e1;
+  --gold-dim:  #7a5a07;
+  --slate:     #3b5266;
+  --slate-light:#eaeff2;
+  --slate-dim: #25394a;
+  --rule:      #ddd5c0;
+  --rule-dark: #c7bc9e;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 17.5px;
+  line-height: 1.78;
+  -webkit-font-smoothing: antialiased;
+}
+
+#progress {
+  position: fixed; top: 0; left: 0;
+  height: 3px; width: 0%;
+  background: var(--gold);
+  z-index: 999;
+  transition: width 0.1s linear;
+}
+
+.series-nav {
+  max-width: 1000px; margin: 0 auto;
+  padding: 24px 32px 0;
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.08em;
+  color: var(--ink-dim);
+  flex-wrap: wrap;
+}
+.series-nav .part {
+  padding: 4px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--rule-dark);
+}
+.series-nav .part.active { background: var(--gold); color: #fff; border-color: var(--gold); font-weight: 600; }
+.series-nav .sep { color: var(--rule-dark); }
+
+/* ══════════════ HERO ══════════════ */
+.hero {
+  padding: 48px 32px 0;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.hero-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+  margin-bottom: 24px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-tag::before { content: ''; width: 24px; height: 1px; background: var(--gold-dim); }
+
+.hero h1 {
+  font-family: 'Source Serif 4', serif;
+  font-size: clamp(30px, 5vw, 56px);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  margin-bottom: 24px;
+  max-width: 820px;
+}
+.hero h1 em { font-style: italic; font-weight: 500; color: var(--gold-dim); }
+
+.hero-sub {
+  font-size: 19px;
+  color: var(--ink-soft);
+  max-width: 640px;
+  line-height: 1.6;
+  margin-bottom: 48px;
+}
+
+/* ── Defense ladder widget — the signature element for Part 2 ── */
+.ladder-widget {
+  background: #fff;
+  border: 1px solid var(--rule-dark);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 60px;
+  box-shadow: 0 2px 24px rgba(0,0,0,0.04);
+}
+.ladder-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 20px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--rule);
+}
+.ladder-dot { width: 8px; height: 8px; border-radius: 50%; }
+.ladder-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-dim); flex: 1;
+}
+.ladder-body { padding: 28px 24px; }
+.ladder-rows { display: flex; flex-direction: column; gap: 0; }
+.ladder-row {
+  display: grid;
+  grid-template-columns: 170px 1fr 90px;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--rule);
+}
+.ladder-row:last-child { border-bottom: none; }
+.ladder-defense {
+  font-size: 14px; font-weight: 600; color: var(--ink);
+}
+.ladder-track {
+  height: 6px;
+  background: var(--bg-card);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.ladder-fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  border-radius: 4px;
+}
+.ladder-status {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px; font-weight: 600;
+  text-align: right;
+  letter-spacing: 0.02em;
+}
+.ladder-row.blocked .ladder-fill { background: #c44; width: 8%; }
+.ladder-row.blocked .ladder-status { color: #a83232; }
+.ladder-row.weak .ladder-fill { background: var(--gold); width: 30%; }
+.ladder-row.weak .ladder-status { color: var(--gold-dim); }
+.ladder-row.strong .ladder-fill { background: var(--slate); width: 92%; }
+.ladder-row.strong .ladder-status { color: var(--slate-dim); }
+.ladder-caption {
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--ink-dim);
+  line-height: 1.55;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+.ladder-caption strong { color: var(--ink); }
+
+/* ══════════════ ARTICLE ══════════════ */
+.article {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 0 24px 100px;
+}
+
+p { margin-bottom: 22px; }
+strong { color: var(--ink); font-weight: 600; }
+em { font-style: italic; }
+
+.meter-head {
+  margin-top: 76px;
+  margin-bottom: 30px;
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+}
+.meter-num {
+  font-family: 'Source Serif 4', serif;
+  font-size: 42px;
+  font-weight: 600;
+  color: var(--gold-dim);
+  line-height: 1;
+  flex-shrink: 0;
+  min-width: 64px;
+}
+.meter-head-text { padding-bottom: 4px; border-bottom: 1px solid var(--rule); flex: 1; }
+.meter-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--ink-dim); margin-bottom: 6px;
+}
+h2 {
+  font-family: 'Source Serif 4', serif;
+  font-size: 26px; font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em; line-height: 1.25;
+}
+h3 {
+  font-family: 'Source Serif 4', serif;
+  font-size: 19px; font-weight: 600;
+  color: var(--ink);
+  margin-top: 40px; margin-bottom: 14px;
+}
+
+.term-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  background: var(--slate-light);
+  color: var(--slate-dim);
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.callout {
+  margin: 36px 0;
+  border-left: 3px solid;
+  padding: 18px 24px;
+  border-radius: 0 6px 6px 0;
+}
+.callout-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  margin-bottom: 8px; font-weight: 500;
+}
+.callout p { margin-bottom: 0; font-size: 15.5px; line-height: 1.65; }
+.callout.slate { background: var(--slate-light); border-color: var(--slate); }
+.callout.slate .callout-label { color: var(--slate-dim); }
+.callout.gold  { background: var(--gold-light); border-color: var(--gold); }
+.callout.gold  .callout-label { color: var(--gold-dim); }
+
+/* Stat banner */
+.stat-banner {
+  margin: 40px 0;
+  background: var(--gold-light);
+  border: 1px solid #e0c98a;
+  border-radius: 8px;
+  padding: 26px 28px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.stat-big {
+  font-family: 'Source Serif 4', serif;
+  font-size: 48px; font-weight: 700;
+  color: var(--gold-dim);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.stat-desc { font-size: 15px; color: var(--ink-soft); line-height: 1.55; }
+.stat-desc strong { color: var(--ink); }
+@media (max-width: 520px) {
+  .stat-banner { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .stat-big { font-size: 38px; }
+}
+
+/* Comparison: what each defense actually checks */
+.check-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin: 36px 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.check-col { padding: 22px 24px; }
+.check-col.no  { background: #fbeceb; }
+.check-col.yes { background: var(--slate-light); }
+.check-head {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  margin-bottom: 14px; font-weight: 500;
+}
+.check-col.no .check-head  { color: #a83232; }
+.check-col.yes .check-head { color: var(--slate-dim); }
+.check-col p { font-size: 14px; line-height: 1.6; margin-bottom: 0; color: var(--ink-soft); }
+@media (max-width: 560px) { .check-grid { grid-template-columns: 1fr; } }
+
+/* Case card */
+.case-card {
+  margin: 32px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--rule-dark);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.case-head {
+  padding: 14px 20px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--rule);
+  display: flex; align-items: center; gap: 12px;
+  flex-wrap: wrap;
+}
+.case-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; font-weight: 600;
+  color: var(--ink);
+  background: #fff;
+  padding: 4px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--rule-dark);
+}
+.case-sub { font-size: 13px; color: var(--ink-dim); }
+.case-body { padding: 20px; }
+.case-body p { margin-bottom: 14px; font-size: 15px; }
+.case-body p:last-child { margin-bottom: 0; }
+
+.pull {
+  margin: 48px 0;
+  padding: 0 0 0 24px;
+  border-left: 4px solid var(--ink);
+}
+.pull p {
+  font-family: 'Source Serif 4', serif;
+  font-size: 22px; font-style: italic; font-weight: 500;
+  color: var(--ink); line-height: 1.42;
+  margin-bottom: 8px;
+}
+.pull cite {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--ink-dim);
+  letter-spacing: 0.05em; font-style: normal;
+}
+
+.closing { margin-top: 80px; padding-top: 44px; border-top: 1px solid var(--rule); }
+.closing p { font-size: 18px; line-height: 1.78; margin-bottom: 20px; }
+
+.kicker {
+  margin-top: 40px;
+  font-family: 'Source Serif 4', serif;
+  font-size: 27px; font-weight: 600;
+  color: var(--ink); line-height: 1.3;
+}
+.kicker em { font-style: italic; color: var(--gold-dim); font-weight: 500; }
+
+.next-part {
+  margin-top: 36px;
+  padding: 20px 24px;
+  background: var(--slate-light);
+  border: 1px solid var(--slate);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.next-part-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--slate-dim); flex-shrink: 0;
+}
+.next-part-title {
+  font-family: 'Source Serif 4', serif;
+  font-size: 16px; font-weight: 600;
+  color: var(--ink);
+}
+
+.source-note {
+  margin-top: 36px;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--ink-dim);
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.7;
+}
+
+.author-card {
+  margin-top: 36px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.author-icon {
+  width: 40px; height: 40px;
+  background: var(--bg-raise);
+  border: 1px solid var(--rule-dark);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.author-name { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink); }
+.author-role { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-dim); margin-top: 3px; }
+
+footer {
+  padding: 28px 24px;
+  text-align: center;
+  border-top: 1px solid var(--rule);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+@media (max-width: 600px) {
+  .hero h1 { font-size: 27px; }
+  h2 { font-size: 21px; }
+  .meter-num { font-size: 32px; min-width: 48px; }
+  .ladder-row { grid-template-columns: 1fr; gap: 6px; text-align: left; }
+  .ladder-status { text-align: left; }
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<nav class="series-nav">
+  <span class="part">Part 1 — The Setup</span>
+  <span class="sep">→</span>
+  <span class="part active">Part 2 — Why MFA Doesn't Help</span>
+  <span class="sep">→</span>
+  <span class="part">Part 3 — What Actually Works</span>
+</nav>
+
+<!-- ══════════════ HERO ══════════════ -->
+<header class="hero">
+  <div class="hero-tag">Device Code Phishing · Part 2 of 3</div>
+  <h1>Why Your Password, Your MFA App, and Even Your Passkey Don't Matter <em>Here</em></h1>
+  <p class="hero-sub">Part 1 showed how the trick works. This is about something a little more uncomfortable — the reason almost every defense you've been told to trust was never actually standing in this attack's way to begin with.</p>
+
+  <div class="ladder-widget">
+    <div class="ladder-bar">
+      <span class="ladder-dot" style="background:#c44"></span>
+      <span class="ladder-dot" style="background:#b8860b"></span>
+      <span class="ladder-dot" style="background:#3b5266"></span>
+      <span class="ladder-title">How far each defense actually reaches</span>
+    </div>
+    <div class="ladder-body">
+      <div class="ladder-rows">
+        <div class="ladder-row blocked">
+          <span class="ladder-defense">A strong password</span>
+          <span class="ladder-track"><span class="ladder-fill"></span></span>
+          <span class="ladder-status">NOT INVOLVED</span>
+        </div>
+        <div class="ladder-row blocked">
+          <span class="ladder-defense">SMS / authenticator app</span>
+          <span class="ladder-track"><span class="ladder-fill"></span></span>
+          <span class="ladder-status">NOT INVOLVED</span>
+        </div>
+        <div class="ladder-row weak">
+          <span class="ladder-defense">"Approve this login?" push</span>
+          <span class="ladder-track"><span class="ladder-fill"></span></span>
+          <span class="ladder-status">YOU APPROVE IT</span>
+        </div>
+        <div class="ladder-row strong">
+          <span class="ladder-defense">Physical security key / passkey</span>
+          <span class="ladder-track"><span class="ladder-fill"></span></span>
+          <span class="ladder-status">PROTECTS LOGIN ONLY</span>
+        </div>
+      </div>
+      <div class="ladder-caption">Every bar above measures the same thing: how much of this specific attack each defense actually sees. <strong>The first two never get triggered at all.</strong> The third one is the one you personally click "yes" on, in good faith. The fourth genuinely helps — but only at a step in the process this attack has already learned to walk around entirely.</div>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════ ARTICLE ══════════════ -->
+<article class="article">
+
+  <p>If you read Part 1, you already know the trick: a real code, on a real Microsoft page, approved by a real person doing something that feels routine. What we didn't dwell on is the question that should naturally follow once the mechanics sink in — surely <em>something</em> stops this? Companies have spent the better part of a decade telling employees to turn on multi-factor authentication. Many have gone further, handing out physical security keys, the gold standard that security teams have pointed to for years as the thing that finally makes phishing close to impossible.</p>
+
+  <p>None of it was built with this particular front door in mind. Not because any of it is poorly designed — most of it is excellent, genuinely, at the job it was built for. The problem is that this attack simply doesn't walk through that door at all.</p>
+
+  <div class="meter-head">
+    <div class="meter-num">03</div>
+    <div class="meter-head-text">
+      <div class="meter-tag">The Distinction That Explains Everything</div>
+      <h2>Two Different Doors, and MFA Only Guards One</h2>
+    </div>
+  </div>
+
+  <p>Security systems quietly split into two separate jobs that get talked about as if they're the same thing. The first job is <span class="term-chip">authentication</span> — proving you are who you say you are, usually with a password plus a second factor like a code or a fingerprint. The second job is <span class="term-chip">authorization</span> — once you've proven who you are, deciding what you're actually allowed to do, and handing out the digital proof of that permission.</p>
+
+  <p>Multi-factor authentication, by definition, lives entirely in the first job. It exists to answer one question: is the person typing right now actually you? Every form of MFA — a text message code, a push notification, an app generating six digits every thirty seconds — is built to make that one moment harder to fake.</p>
+
+  <p>Device code phishing skips that question entirely, because it was never asked in the way you'd expect. Go back to what's actually happening: the attacker logs in as <em>themselves</em>, using their own request to Microsoft's servers, completely legitimately. No password is being guessed. No MFA prompt needs faking, because nobody is pretending to be you at the login screen — there is no login screen involved for you at all. What you're approving instead is a permission slip, after the fact, for a session that already exists. You're not the one being authenticated. You're the one being asked to authorize someone else's session, while believing you're confirming your own.</p>
+
+  <div class="check-grid">
+    <div class="check-col no">
+      <div class="check-head">What MFA Checks</div>
+      <p>"Is the person at this keyboard, right now, really who they claim to be?" — answered once, at the start of a session, using something you know, have, or are.</p>
+    </div>
+    <div class="check-col yes">
+      <div class="check-head">What This Attack Targets</div>
+      <p>"Should this already-issued, already-approved session be allowed to act?" — a question that, by design, comes after authentication is finished and considered settled.</p>
+    </div>
+  </div>
+
+  <p>That gap between the two questions has a name inside the industry: <span class="term-chip">consent phishing</span>, sometimes filed under the broader umbrella of OAuth phishing. It's a known, documented category of attack — not a new invention, just one that's spent the last few years quietly getting easier to run at scale, while most public advice kept repeating "turn on MFA" as if that single sentence covered every front door a determined attacker might try.</p>
+
+  <div class="meter-head">
+    <div class="meter-num">04</div>
+    <div class="meter-head-text">
+      <div class="meter-tag">The Part That Surprises People</div>
+      <h2>The Thing the Attacker Actually Steals</h2>
+    </div>
+  </div>
+
+  <p>Picture what happens the instant you successfully log into anything — your email, a banking app, a work system. The service doesn't make you type your password again for every single click afterward. Instead, it hands your browser or app a kind of temporary backstage pass, called a <span class="term-chip">session token</span>, that says "this device already proved who it is, let it through without asking again" for some period of time — sometimes hours, sometimes days, occasionally longer.</p>
+
+  <p>That backstage pass is the entire prize in a device code phishing attack. Not your password. Not a one-time code. The actual token itself — the artifact that proves, to every system checking it, that a successful login already happened. And here's the detail that makes this genuinely uncomfortable to think about: <strong>once an attacker holds that token, it works exactly as well for them as it would for you</strong>, because as far as Microsoft's systems are concerned, nothing fraudulent has occurred. A real login happened. A real approval was given. The token reflects that faithfully — it just doesn't know, and structurally cannot know, that the person clicking "Allow" believed they were doing something else entirely.</p>
+
+  <div class="stat-banner">
+    <div class="stat-big">62%</div>
+    <div class="stat-desc">of the phishing volume Microsoft blocked by mid-2025 came from a single commercial kit — Tycoon2FA — built specifically around stealing session tokens after a real login, rather than guessing passwords beforehand. This isn't a fringe technique anymore. It's the dominant one.</div>
+  </div>
+
+  <p>This is also why an attacker who pulls this off doesn't need to rush. The stolen token typically stays valid until it naturally expires or someone deliberately revokes it — and in plenty of organizations, nobody is actively watching for a token that's being used from an unexpected country at an unexpected hour. Security researchers have documented cases where this kind of access went unnoticed for days, which is an entirely different kind of problem than a single failed login attempt that trips an alarm and gets blocked in seconds.</p>
+
+  <div class="meter-head">
+    <div class="meter-num">05</div>
+    <div class="meter-head-text">
+      <div class="meter-tag">The Honest, Slightly Complicated Truth</div>
+      <h2>So Do Passkeys and Security Keys Actually Help, or Not?</h2>
+    </div>
+  </div>
+
+  <p>Here's where it would be easy to overstate things, so it's worth being precise. Physical security keys and passkeys — built on a standard called <span class="term-chip">FIDO2</span> — really are exceptional at the one job they were designed for. They use a clever bit of cryptography that ties your login attempt to the exact real website you're talking to, which means a fake lookalike page literally cannot trick your key into approving anything. If your organization has rolled these out properly, the classic version of phishing — fake login page, stolen password — genuinely stops working. There's solid evidence for this: one well-known case saw a major company's employees click directly on a phishing link and type their passwords into a fake page, and the attack still failed outright, purely because their hardware keys refused to cooperate with a domain that didn't match.</p>
+
+  <p>So why doesn't that same protection extend to device code phishing? Because the security key's entire cryptographic guarantee is scoped to one specific moment — the act of logging in. It checks, with real mathematical certainty, "is this truly the website I was registered with?" It was never asked to check, and structurally has no way to check, "does the person approving this device code actually understand what they're approving, and why?" That second question lives one layer above where the key's protection applies. The key does its job perfectly. The job itself just doesn't cover this particular threat.</p>
+
+  <div class="callout slate">
+    <div class="callout-label">Worth sitting with for a moment</div>
+    <p>It's tempting to read this as "security keys don't work," and that would be the wrong lesson. The right one is narrower and a bit more useful: every defense protects a specific layer, and attackers, predictably, go looking for the layer that isn't covered yet. Security keys closed the password-theft layer remarkably well. Device code phishing simply found the layer sitting right above it, still wide open, and walked through.</p>
+  </div>
+
+  <h3>A real example of exactly this pattern, from outside this specific attack</h3>
+
+  <p>This isn't a hypothetical concern about FIDO2's limits — it's already played out in the wild, just through a slightly different door. Researchers at the security firm Expel documented a campaign where attackers, after stealing someone's password through an ordinary fake login page, deliberately triggered a feature called cross-device sign-in — the same "scan this QR code with your phone" convenience feature plenty of services now offer. The real site generated a real QR code. The phishing site relayed that code back to the victim. The victim scanned it with the authenticator app on their own phone, approving what looked like their own login, because by every visible signal, it was.</p>
+
+  <div class="case-card">
+    <div class="case-head">
+      <span class="case-name">PoisonSeed campaign</span>
+      <span class="case-sub">documented by Expel, 2025</span>
+    </div>
+    <div class="case-body">
+      <p>The notable twist here is what happened next: the attempt actually failed in the cases Expel examined closely, because the cross-device standard requires the two devices to be physically near each other — a deliberate safeguard — and the attackers weren't. But the pattern itself was real and is now well understood: a security key holder can still be walked, step by step, into approving something they never intended to, simply by being offered a "more convenient" alternative path that quietly sidesteps the protection they thought they had.</p>
+      <p>Swap "cross-device QR code" for "device code entered on a web page," and you have, almost exactly, the mechanism from Part 1.</p>
+    </div>
+  </div>
+
+  <div class="pull">
+    <p>Phishing-resistant authentication didn't fail here. It was never asked the question this attack is actually asking.</p>
+    <cite>— the one sentence worth remembering from this entire part</cite>
+  </div>
+
+  <h3>Why "just enable MFA" became such comforting, incomplete advice</h3>
+
+  <p>None of this is really an indictment of multi-factor authentication, which remains, for the overwhelming majority of everyday threats, a genuinely excellent and necessary control. The uncomfortable shift is narrower than that: for years, "enable MFA" functioned as a kind of all-purpose reassurance — the sentence security teams reached for whenever anyone asked "are we protected?" That sentence is no longer complete on its own, because a meaningful and fast-growing slice of real-world attacks have quietly moved to a layer that sentence was never written to cover.</p>
+
+  <p>The kits built to run these attacks aren't experimental or rare anymore, either. Commercial phishing-as-a-service platforms — sold openly, priced like ordinary subscription software, sometimes for as little as a couple hundred dollars — now bundle this exact technique alongside more familiar tricks, packaged for anyone willing to pay, regardless of their own technical skill. That's the part that should genuinely register: the barrier to running this kind of attack has dropped from "skilled, patient operator" to "anyone with a credit card and a believable email template," in the space of roughly a year.</p>
+
+  <div class="closing">
+    <p>None of this means you should distrust every login prompt you see for the rest of your life, or assume every code-entry screen is secretly malicious. The TV setup flow from Part 1 is still exactly what it always was — useful, legitimate, harmless on its own. What's changed is narrower and more specific: the defenses most people have been told represent "good security" were built, almost entirely, to guard the authentication moment. This attack quietly stepped past that moment and went looking for the approval that happens right after it, where almost nothing was standing guard at all.</p>
+
+    <p>That's also, conveniently, exactly where real defenses do exist — they're just less famous, less talked about, and require knowing this gap exists in the first place before you'd ever think to ask for them.</p>
+
+    <div class="kicker">
+      Your defenses weren't beaten.<br>
+      They were standing at the <em>wrong door</em>.
+    </div>
+
+    <div class="next-part">
+      <span class="next-part-label">Next →</span>
+      <span class="next-part-title">Part 3: What Actually Works — and the Settings Most Organizations Have Never Touched</span>
+    </div>
+
+    <div class="source-note">
+      Sourced from Microsoft Threat Intelligence advisories, Expel and BleepingComputer reporting on the PoisonSeed campaign, WorkOS, IBM, SentinelOne, and Cyber Unit research on phishing-resistant authentication limits, and the 2025 Verizon Data Breach Investigations Report, current as of June 2026.
+    </div>
+
+    <div class="author-card">
+      <div class="author-icon">🛡</div>
+      <div>
+        <div class="author-name">Ali Asgar Kanchwala</div>
+        <div class="author-role">15+ years · Network Security · Identity & Access Threats · Abu Dhabi, UAE</div>
+      </div>
+    </div>
+  </div>
+
+</article>
+
+<footer>
+  Device Code Phishing · OAuth Security · Identity Threats · Series Part 2 of 3
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const d = document.documentElement;
+    document.getElementById('progress').style.width =
+      (d.scrollTop / (d.scrollHeight - d.clientHeight) * 100) + '%';
+  });
+</script>
+</body>
+</html>
