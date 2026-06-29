@@ -97,6 +97,46 @@ const blogPosts = [
     "readTime": "19 min read"
   },
   {
+    "slug": "../posts/device-code-phishing-part3",
+    "title": "Device Code Phishing, Part 3 — What Actually Works",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "June 2026",
+    "readTime": "17 min read"
+  },
+  {
+    "slug": "../posts/device-code-phishing-part2",
+    "title": "Device Code Phishing, Part 2 — Why Your Password, Your MFA App, and Even Your Passkey Don't Matter Here",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "June 2026",
+    "readTime": "17 min read"
+  },
+  {
+    "slug": "../posts/device-code-phishing-part1",
+    "title": "Device Code Phishing, Part 1 — The Login Screen That Was Never Actually a Login Screen",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "June 2026",
+    "readTime": "16 min read"
+  },
+  {
+    "slug": "../posts/crowdstrike-2025-explained",
+    "title": "The CrowdStrike 2025 Threat Hunting Report — Explained for Humans",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "June 2026",
+    "readTime": "17 min read"
+  },
+  {
+    "slug": "../posts/claude-mythos-explained",
+    "title": "Claude Mythos, 0 to 100 — What It Is, What It Isn't, and Why It Disappeared",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "June 2026",
+    "readTime": "19 min read"
+  },
+  {
     "slug": "../posts/beyond-the-api-securing-netconf-and-restconf-interfaces-on-legacy-hardware",
     "title": "Beyond the API: Securing NETCONF and RESTCONF on Legacy Hardware",
     "tag": "Security",
