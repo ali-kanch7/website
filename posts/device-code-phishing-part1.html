@@ -404,6 +404,16 @@ footer {
   background: var(--bg-card);
   border-color: var(--ink-dim);
 }
+a.next-part {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+}
+a.next-part:hover {
+  border-color: var(--slate-dim);
+  transform: translateX(2px);
+}
 </style>
 </head>
 <body>
@@ -572,10 +582,10 @@ footer {
       It just never told you <em>who</em> was actually asking.
     </div>
 
-    <div class="next-part">
+    <a class="next-part" href="device-code-phishing-part2.html">
       <span class="next-part-label">Next →</span>
-      <a class="next-part-title" href="device-code-phishing-part2.html">Part 2: Why Your Password, Your MFA App, and Even Your Passkey Don't Matter Here</a>
-    </div>
+      <span class="next-part-title">Part 2: Why Your Password, Your MFA App, and Even Your Passkey Don't Matter Here</span>
+    </a>
 
     <div class="source-note">
       Sourced from Microsoft Defender Security Research advisories, Push Security and LevelBlue threat research, and Microsoft Threat Intelligence campaign data, current as of June 2026.
