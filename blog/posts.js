@@ -118,7 +118,7 @@ const blogPosts = [
     "tag": "Security",
     "excerpt": "Read the latest article.",
     "date": "June 2026",
-    "readTime": "17 min read"
+    "readTime": "18 min read"
   },
   {
     "slug": "../posts/device-code-phishing-part1",
