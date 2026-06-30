@@ -422,6 +422,16 @@ footer {
   background: var(--bg-card);
   border-color: var(--ink-dim);
 }
+a.next-part {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+}
+a.next-part:hover {
+  border-color: var(--slate-dim);
+  transform: translateX(2px);
+}
 </style>
 </head>
 <body>
@@ -582,10 +592,10 @@ footer {
       They were standing at the <em>wrong door</em>.
     </div>
 
-    <div class="next-part">
+    <a class="next-part" href="device-code-phishing-part3.html">
       <span class="next-part-label">Next →</span>
-      <a class="next-part-title" href="device-code-phishing-part3.html">Part 3: What Actually Works — and the Settings Most Organizations Have Never Touched</a>
-    </div>
+      <span class="next-part-title">Part 3: What Actually Works — and the Settings Most Organizations Have Never Touched</span>
+    </a>
 
     <div class="source-note">
       Sourced from Microsoft Threat Intelligence advisories, Expel and BleepingComputer reporting on the PoisonSeed campaign, WorkOS, IBM, SentinelOne, and Cyber Unit research on phishing-resistant authentication limits, and the 2025 Verizon Data Breach Investigations Report, current as of June 2026.
