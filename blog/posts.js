@@ -5,7 +5,7 @@ const blogPosts = [
     "title": "Understanding Edge Computing Security Challenges",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "4 min read"
   },
   {
@@ -13,7 +13,7 @@ const blogPosts = [
     "title": "TLS Inspection at Scale — The Hidden Risks Nobody Talks About",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "22 min read"
   },
   {
@@ -21,7 +21,7 @@ const blogPosts = [
     "title": "The Hidden Risks of GitOps in Network Security",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "4 min read"
   },
   {
@@ -29,7 +29,7 @@ const blogPosts = [
     "title": "The Anatomy of a ZTNA Controller Failure",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "4 min read"
   },
   {
@@ -37,7 +37,7 @@ const blogPosts = [
     "title": "Silent Failures: The Hidden Cost of Asymmetric Routing",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "3 min read"
   },
   {
@@ -45,7 +45,7 @@ const blogPosts = [
     "title": "Securing the Control Plane: Preventing Resource Exhaustion",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "4 min read"
   },
   {
@@ -53,7 +53,7 @@ const blogPosts = [
     "title": "The Purdue Model Is Lying to You — OT/IT Convergence Security",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "15 min read"
   },
   {
@@ -61,7 +61,7 @@ const blogPosts = [
     "title": "Zero Trust for Non-Human Identities — The Accounts Nobody Is Watching",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "23 min read"
   },
   {
@@ -69,7 +69,7 @@ const blogPosts = [
     "title": "NAC Beyond 802.1X — Contextual Posture in a BYOD/IoT World",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "22 min read"
   },
   {
@@ -77,7 +77,7 @@ const blogPosts = [
     "title": "MACsec vs. IPsec: Architectural Trade-offs",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "3 min read"
   },
   {
@@ -85,7 +85,7 @@ const blogPosts = [
     "title": "Linting Infrastructure: Catching VLAN Leaks",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "4 min read"
   },
   {
@@ -93,7 +93,7 @@ const blogPosts = [
     "title": "BGP Hijacking: The Internet's Broken Trust Model",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "4 min read"
   },
   {
@@ -101,7 +101,7 @@ const blogPosts = [
     "title": "The Firewall That's Watching the Wrong Door — East-West Traffic Security",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "19 min read"
   },
   {
@@ -109,7 +109,7 @@ const blogPosts = [
     "title": "Device Code Phishing, Part 3 — What Actually Works",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "17 min read"
   },
   {
@@ -117,7 +117,7 @@ const blogPosts = [
     "title": "Device Code Phishing, Part 2 — Why Your Password, Your MFA App, and Even Your Passkey Don't Matter Here",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "18 min read"
   },
   {
@@ -125,15 +125,23 @@ const blogPosts = [
     "title": "Device Code Phishing, Part 1 — The Login Screen That Was Never Actually a Login Screen",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "16 min read"
+  },
+  {
+    "slug": "../posts/decryption-blind-spots-the-performance-and-architectural-reality-of-ssltls-inspection-at-scale",
+    "title": "Decryption Blind Spots: The Performance and Architectural Reality",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "4 min read"
   },
   {
     "slug": "../posts/crowdstrike-2025-explained",
     "title": "The CrowdStrike 2025 Threat Hunting Report — Explained for Humans",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "17 min read"
   },
   {
@@ -141,7 +149,7 @@ const blogPosts = [
     "title": "Claude Mythos, 0 to 100 — What It Is, What It Isn't, and Why It Disappeared",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "19 min read"
   },
   {
@@ -149,7 +157,7 @@ const blogPosts = [
     "title": "Beyond the API: Securing NETCONF and RESTCONF on Legacy Hardware",
     "tag": "Security",
     "excerpt": "Read the latest article.",
-    "date": "June 2026",
+    "date": "July 2026",
     "readTime": "3 min read"
   }
 ];
