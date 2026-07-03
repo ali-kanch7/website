@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Machinery Underneath: RAG, Memory, Context, and Orchestration — The AI Universe, Part 5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --text: #1f2228;
+    --muted: #6b6f78;
+    --card: #eeebe2;
+    --card-raised: #e4dfd0;
+    --rule: #dcd5c2;
+    --rule-dark: #c5bca3;
+    --accent: #3f7f8a;
+    --accent-soft: #3f7f8a18;
+    --accent-soft2: #3f7f8a2e;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.7;
+    font-size: 18px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 740px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- SERIES NAV ---------- */
+  .series-nav {
+    border-bottom: 1px solid var(--rule);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .series-nav-inner {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .series-nav-inner::-webkit-scrollbar { display: none; }
+  .series-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .nav-dot {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    padding: 5px 10px;
+    border-radius: 20px;
+    color: var(--muted);
+    flex-shrink: 0;
+    border: 1px solid transparent;
+  }
+  .nav-dot.current { background: var(--accent); color: #f7f5f0; font-weight: 600; }
+  .nav-dot.future { color: var(--rule-dark); }
+  .nav-dot.done { color: var(--muted); }
+
+  /* ---------- HERO ---------- */
+  .hero { padding: 56px 0 8px; }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--accent); }
+  h1 {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 600;
+    font-size: 42px;
+    line-height: 1.18;
+    letter-spacing: -0.01em;
+    margin-bottom: 22px;
+  }
+  .teaser {
+    font-size: 19px;
+    color: #3a3d44;
+    line-height: 1.65;
+    max-width: 600px;
+    margin-bottom: 40px;
+  }
+
+  /* ---------- HERO WIDGET: memory vs retrieval before/after ---------- */
+  .widget {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 28px 28px 30px;
+    margin-bottom: 56px;
+  }
+  .widget-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .widget-prompt {
+    font-family: 'Source Serif 4', serif;
+    font-size: 19px;
+    font-style: italic;
+    color: var(--text);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  .toggle-row {
+    display: flex;
+    background: var(--card-raised);
+    border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
+    margin-bottom: 18px;
+  }
+  .toggle-btn {
+    flex: 1;
+    padding: 11px 14px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+  }
+  .toggle-btn.active { background: var(--accent); color: #f7f5f0; }
+  .output-card {
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px 22px;
+    min-height: 160px;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .output-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .output-body { font-size: 15px; color: #3a3d44; line-height: 1.6; margin-bottom: 12px; }
+  .output-source {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: var(--card);
+    border-left: 2px solid var(--accent);
+    padding: 7px 11px;
+    border-radius: 0 6px 6px 0;
+    color: var(--muted);
+    margin-top: 12px;
+  }
+  .widget-foot { font-size: 13px; color: var(--muted); margin-top: 16px; line-height: 1.5; }
+
+  /* ---------- ARTICLE BODY ---------- */
+  article { padding-bottom: 40px; }
+
+  .meter-head {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    margin: 64px 0 22px;
+  }
+  .meter-num {
+    font-family: 'Source Serif 4', serif;
+    font-size: 52px;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .meter-text { flex: 1; }
+  .meter-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 4px;
+  }
+  h2 {
+    font-family: 'Source Serif 4', serif;
+    font-size: 27px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  p { margin-bottom: 20px; color: var(--text); }
+  p.lead { font-size: 19px; }
+  strong { font-weight: 600; }
+
+  .oneliner {
+    font-family: 'Source Serif 4', serif;
+    font-size: 22px;
+    font-style: italic;
+    text-align: left;
+    margin: 36px 0;
+    color: var(--text);
+    line-height: 1.45;
+  }
+
+  .callout {
+    background: var(--card);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    padding: 22px 26px;
+    margin: 34px 0;
+  }
+  .callout-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout p { font-size: 16.5px; }
+
+  /* flow steps */
+  .flow {
+    margin: 34px 0;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .flow-step {
+    display: flex;
+    gap: 16px;
+    padding: 18px 22px;
+    background: var(--card);
+    border-bottom: 1px solid var(--rule);
+  }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-step:nth-child(even) { background: var(--card-raised); }
+  .flow-mark {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 600;
+    flex-shrink: 0;
+    width: 22px;
+  }
+  .flow-body strong { display: block; font-size: 15.5px; margin-bottom: 3px; }
+  .flow-body span { font-size: 14.5px; color: var(--muted); line-height: 1.5; }
+
+  /* compare */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 34px 0;
+  }
+  .compare-col { background: var(--card); padding: 20px 22px; }
+  .compare-col:first-child { background: var(--card-raised); }
+  .compare-head {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 14px;
+    color: var(--text);
+  }
+  .compare-col ul { list-style: none; }
+  .compare-col li {
+    font-size: 15px;
+    padding: 7px 0;
+    border-top: 1px solid var(--rule);
+    color: #3a3d44;
+  }
+  .compare-col li:first-of-type { border-top: none; }
+  @media (max-width: 600px) { .compare { grid-template-columns: 1fr; } }
+
+  .pull {
+    font-family: 'Source Serif 4', serif;
+    font-size: 25px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--accent);
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 28px 0;
+    margin: 40px 0;
+  }
+
+  .chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78em;
+    background: var(--accent-soft2);
+    color: var(--accent);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-weight: 600;
+  }
+
+  .closing { margin-top: 56px; }
+  .kicker {
+    font-family: 'Source Serif 4', serif;
+    font-size: 23px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin: 36px 0 44px;
+  }
+
+  .source-note {
+    font-size: 14px;
+    color: var(--muted);
+    border-top: 1px solid var(--rule);
+    padding-top: 24px;
+    margin-bottom: 32px;
+    line-height: 1.6;
+  }
+
+  .byline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    padding-bottom: 64px;
+  }
+  .byline .name { color: var(--text); font-weight: 600; font-size: 14px; }
+
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-soft2); }
+  a:hover { border-bottom-color: var(--accent); }
+
+  @media (max-width: 600px) {
+    body { font-size: 16.5px; }
+    h1 { font-size: 32px; }
+    .meter-num { font-size: 40px; }
+    h2 { font-size: 23px; }
+    .pull { font-size: 21px; }
+    .widget { padding: 22px 18px 26px; }
+  }
+  /* ---------- SERIES NAV -(Nav scrolling starts here)--------- */
+.series-nav {
+  border-bottom: 1px solid var(--rule);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.series-nav-inner {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.series-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  margin-right: 16px;
+  flex-shrink: 0;
+  font-weight: bold;
+}
+
+/* Relative positioning wrapper to host the arrows safely over the links */
+.series-nav-scroll-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+/* Base styling for the hover-to-scroll arrows */
+.nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg);
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 10;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s ease, opacity 0.2s ease;
+  font-weight: bold;
+}
+
+.nav-arrow:hover {
+  color: var(--text);
+}
+
+.nav-arrow.left { left: 0; padding-right: 2px; }
+.nav-arrow.right { right: 0; padding-left: 12px; }
+
+/* The actual link block containing track */
+.series-links-scroll {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow-x: auto;
+  white-space: nowrap;
+  width: 100%;
+  
+  /* Padding on the sides keeps text from hiding directly beneath the arrows */
+  padding: 0 25px; 
+  
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Hide for Firefox */
+}
+
+/* Hide scrollbar completely for Chrome/Safari/Edge */
+.series-links-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-dot {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  padding: 5px 10px;
+  border-radius: 20px;
+  color: var(--muted);
+  flex-shrink: 0;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.nav-dot.current {
+  background: var(--accent);
+  color: #f7f5f0;
+  font-weight: 600;
+}
+
+.nav-dot.future {
+  color: var(--rule-dark);
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.nav-dot.future:hover {
+  opacity: 1;
+  color: var(--text);
+}
+</style>
+</head>
+<body>
+
+<nav class="series-nav">
+  <div class="series-nav-inner">
+    <span class="series-label">The AI Universe</span>
+    
+    <div class="series-nav-scroll-wrapper">
+      <button class="nav-arrow left" id="nav-arrow-left">&#8592;</button>
+      <button class="nav-arrow right" id="nav-arrow-right">&#8594;</button>
+      
+      <div class="series-links-scroll">
+        <a href="part-1-what-ai-means.html" class="nav-dot future">01 · What AI Means</a>
+		<a href="part-2-how-its-built.html" class="nav-dot future">02 · How It's Built</a>
+        <a href="part-3-prompting.html" class="nav-dot future">03 · Prompting</a>
+        <a href="part-4-agents.html" class="nav-dot future">04 · Agents</a>
+		<span class="nav-dot current">05 · The Machinery</span>
+<!--        <a href="part-5-the-machinery.html" class="nav-dot future">05 · The Machinery</a> -->
+        <a href="part-6-limits-and-risks.html" class="nav-dot future">06 · Limits & Risks</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Part 5 of 6</div>
+    <h1>The Machinery Underneath: RAG, Memory, Context, and Orchestration</h1>
+    <p class="teaser">Ask a model what your company's leave policy says, and it can answer two completely different ways: confidently, from a vague statistical impression of what leave policies generally say — or correctly, because it actually went and read yours. Nothing about the model changed between those two answers. Everything around it did.</p>
+  </div>
+
+  <div class="widget">
+    <div class="widget-label">Same question, two answers — toggle the source</div>
+    <div class="widget-prompt">"What's our VPN access policy for contractors?"</div>
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="btn-memory" onclick="showSource('memory')">Answering from training alone</button>
+      <button class="toggle-btn" id="btn-rag" onclick="showSource('rag')">Answering after retrieval</button>
+    </div>
+    <div id="widget-output"></div>
+    <div class="widget-foot" id="widget-foot"></div>
+  </div>
+
+  <article>
+
+    <p class="lead">Part 2 covered why a model's knowledge cutoff is fixed at training time and can't be nudged forward. That fact creates an obvious, practical problem the moment you try to use a model for anything specific to you: it has never seen your internal documents, your current pricing, your actual network diagram, or last week's incident report, because none of that existed anywhere it could have been trained on. Asked about any of it directly, a model won't say "I don't know." It will reach for the closest statistical pattern in its training data and answer as though that pattern were your specific situation. That's the gap this part is about closing — and it's closed almost entirely by engineering built around the model, not by changes to the model itself.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">01</div>
+      <div class="meter-text">
+        <span class="meter-tag">Open book, not closed book</span>
+        <h2>RAG — handing the model the actual document before it answers</h2>
+      </div>
+    </div>
+
+    <p><span class="chip">Retrieval-augmented generation</span>, or RAG, was introduced in a 2020 research paper from Meta AI, and the core idea is almost disappointingly simple once it's stated plainly: before the model writes an answer, go fetch the actual relevant text from a real source, and hand that text to the model as part of the prompt. The model isn't reciting from memory anymore. It's reading from an open book you placed in front of it, seconds before the exam started.</p>
+
+    <p>The pipeline behind that simple idea has a few real steps. Documents get broken into smaller chunks — typically a few hundred words each — and each chunk is converted into something called an <span class="chip">embedding</span>: a long list of numbers, often a few hundred to a few thousand of them, that represents the meaning of that chunk rather than its exact wording. When you ask a question, your question gets converted into the same kind of numerical representation, and the system searches for chunks whose numbers sit closest to your question's numbers in that space. Then, and only then, does the model see anything — your question, plus the two or three chunks of real text judged most relevant, assembled into one prompt.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">02</div>
+      <div class="meter-text">
+        <span class="meter-tag">Why this isn't keyword search wearing a costume</span>
+        <h2>Embeddings — search by meaning, not by matching words</h2>
+      </div>
+    </div>
+
+    <p>Ordinary search — the kind that's run quietly under enterprise systems for decades — works by matching words. Search "staff leave entitlement" against a document that only says "employee vacation policy," and a pure keyword search comes back empty, because not one word overlaps. An embedding-based search finds that document anyway, because "staff leave entitlement" and "employee vacation policy" land in nearly the same region of that numerical space — the system isn't comparing letters, it's comparing meaning, in the same statistical sense that Part 1 described a trained network learning to recognize a cat without ever being handed an explicit rule for what a cat is.</p>
+
+    <p>This is also why most production retrieval systems in 2026 don't rely on embeddings alone. <span class="chip">Hybrid search</span> combines that meaning-based matching with traditional keyword search underneath it, because pure semantic search occasionally misses an exact term — a specific model number, an exact policy code — that keyword matching would have caught instantly. Layered on top of that, a second pass called <span class="chip">reranking</span> takes the initial batch of retrieved chunks and re-scores them more carefully before deciding what actually goes into the model's prompt. None of this is exotic engineering. It's closer to a well-built search engine with an extra translation step bolted onto the front, so that "meaning" rather than "spelling" decides what counts as a match.</p>
+
+    <div class="callout">
+      <span class="callout-label">Worth sitting with</span>
+      <p>A bigger context window does not make retrieval obsolete, even though it sounds like it should. Part 2 described the "lost in the middle" effect — models paying less attention to information buried in the middle of a long context. Dumping an entire policy manual into a million-token window and asking a question buried among unrelated text routinely performs worse than retrieving just the three relevant paragraphs and asking the same question with far less surrounding noise. More context is not the same thing as better-targeted context, and retrieval exists precisely to do that targeting.</p>
+    </div>
+
+    <div class="meter-head">
+      <div class="meter-num">03</div>
+      <div class="meter-text">
+        <span class="meter-tag">The distinction worth being precise about</span>
+        <h2>"The model remembers" vs. "the system was built to remember"</h2>
+      </div>
+    </div>
+
+    <p>Here's a fact about how these systems work that surprises almost everyone the first time they hear it stated plainly: the model itself has no memory at all, in any persistent sense. Every single time you send a message, the model starts from exactly the same fixed set of weights it had the moment training finished — nothing about your previous conversation has changed those weights by even a fraction. What feels like the model "remembering" what you said earlier in a long chat is, mechanically, just that earlier text being silently re-included in the prompt every single time, the way Part 3 described a long context window working. The model isn't recalling anything. It's re-reading.</p>
+
+    <p>What feels like memory across separate sessions — a system that remembers your preferences from a conversation last week, in a new conversation today — is a different thing entirely, and it has to be built deliberately. A separate piece of engineering watches conversations, decides what's worth keeping, stores those facts somewhere outside the model entirely — typically a database — and then, at the start of a new session, retrieves whatever seems relevant and quietly inserts it back into the prompt before the model ever generates a word. The model isn't remembering you. The system around it is taking notes and handing them back at the right moment, which produces something that feels like memory without the model itself possessing any.</p>
+
+    <div class="oneliner">A context window is short-term working memory. A memory system is closer to a notebook someone else keeps on your behalf — and only ever shows the model the page that's relevant right now.</div>
+
+    <p>This distinction has a practical edge that's worth knowing if you've ever watched an assistant violate an instruction it followed perfectly ten messages earlier. A real April 2026 study tracking this across thousands of trials found that constraints telling a model what it must keep doing tend to hold up well over a long conversation, while constraints telling it what it must avoid doing tend to quietly decay the further back in the conversation they were stated — not because the model "forgot," in any human sense, but because the attention weight on that instruction, buried deeper in the context, dropped below the threshold needed to keep enforcing it. The fix engineering teams reach for isn't a smarter model. It's re-stating the constraint closer to the point where it matters, the same way you'd repeat a safety reminder rather than trust someone to recall it from an hour ago.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">04</div>
+      <div class="meter-text">
+        <span class="meter-tag">The standard everyone quietly converged on</span>
+        <h2>MCP — one socket instead of a different plug for every tool</h2>
+      </div>
+    </div>
+
+    <p>Part 4 described function calling: a model emits a structured request, and surrounding code executes it. That description glossed over a real, unglamorous problem — before late 2024, every single tool had to be wired up to every single model by hand, in a custom integration written just for that pairing. Connect five tools to three different model providers, and you've quietly signed up to build and maintain fifteen separate integrations, each one breaking slightly differently when either side updates. Engineers call this the <span class="chip">N×M problem</span>: N tools times M models, multiplying outward with no shared structure to absorb the complexity.</p>
+
+    <p>The <span class="chip">Model Context Protocol</span>, or MCP, is Anthropic's answer to that problem, released as an open standard in November 2024. Rather than every tool speaking its own dialect to every model, MCP defines one shared protocol: an MCP server exposes a tool — read a file, query a database, search a knowledge base — in a single standardized format, and any MCP-compatible model can discover and use it without a bespoke integration. People reach for the USB-C comparison constantly, and it holds up: just as USB-C didn't make any single device more powerful, MCP doesn't make a model smarter, it just means the same plug works everywhere instead of every manufacturer inventing its own connector. Adoption moved unusually fast for a brand-new standard — OpenAI and Google DeepMind both adopted it within roughly a year, and in December 2025 Anthropic donated MCP's governance to a vendor-neutral foundation under the Linux Foundation, alongside OpenAI and Block, which is normally the kind of move that only happens once a standard has genuinely stopped being any single company's property in practice.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <span class="flow-mark">→</span>
+        <div class="flow-body"><strong>Host</strong><span>The AI application you actually interact with — a chat interface, a coding tool, an IDE.</span></div>
+      </div>
+      <div class="flow-step">
+        <span class="flow-mark">→</span>
+        <div class="flow-body"><strong>Client</strong><span>Lives inside the host, manages the connection to a specific server, translates between the two.</span></div>
+      </div>
+      <div class="flow-step">
+        <span class="flow-mark">→</span>
+        <div class="flow-body"><strong>Server</strong><span>Exposes a tool, a resource, or a prompt template in the standard format — a database, a file system, an internal wiki.</span></div>
+      </div>
+    </div>
+
+    <p>The practical effect, in plain terms: a security team standing up an internal MCP server in front of a log archive or a ticketing system makes that data usable, in a standardized way, by any model that speaks the protocol — Claude, GPT, Gemini, whatever a team adopts next year — without rebuilding the integration from scratch every time the underlying model changes. That's a genuinely unglamorous piece of infrastructure work, and it's also most of what determines whether an agentic system from Part 4 can actually reach the data it needs in the first place.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">05</div>
+      <div class="meter-text">
+        <span class="meter-tag">The part nobody puts on a conference slide</span>
+        <h2>Orchestration — the unglamorous layer everything else depends on</h2>
+      </div>
+    </div>
+
+    <p><span class="chip">Orchestration</span> is the term for everything that decides, behind the scenes, what the model actually sees and in what order: which documents get retrieved, which memories get pulled back in, which tools get offered for this particular request, how the results of one step get formatted before becoming the input to the next. None of it touches the model's weights. All of it determines whether the model has any real chance of giving a good answer.</p>
+
+    <p>This is also, not coincidentally, where most production AI failures actually live. A model rarely fails because it's incapable of reasoning correctly given good information. It fails because the orchestration layer fed it the wrong three document chunks, or stale data, or a tool list so long the model couldn't tell which one applied, or a memory note that should have expired weeks ago. The retrieval pipeline, the memory system, and the tool protocol covered above are not separate concerns bolted onto a finished model — they are the orchestration layer, in practice, and getting them right is unglamorous, invisible when it works, and usually the actual bottleneck when it doesn't.</p>
+
+    <div class="pull">A model with perfect reasoning and a badly built retrieval pipeline answers confidently from the wrong three paragraphs. Nobody calls that a model problem, but it produces exactly the same wrong answer as one.</div>
+
+    <div class="meter-head">
+      <div class="meter-num">06</div>
+      <div class="meter-text">
+        <span class="meter-tag">Where Part 6 picks up</span>
+        <h2>Everything covered so far assumes the system works as intended</h2>
+      </div>
+    </div>
+
+    <p>Parts 1 through 5 have walked through how these systems are built, trained, prompted, turned into agents, and connected to real data — largely assuming each piece does its job correctly. It's worth being honest about what's left out of that picture: what current models still cannot reliably do, what happens when retrieval, memory, or tool access get exploited rather than just misconfigured, and which open questions about this technology are genuinely unresolved rather than just unexplained yet. That's where the series closes, in Part 6.</p>
+
+  </article>
+
+  <div class="closing">
+    <p>The VPN policy question at the top of this page and the retrieval pipeline underneath it point at the same conclusion from two directions: a model's training data is a snapshot, not a window. Everything in this part exists because that snapshot, however large, will never contain this morning's incident report or last quarter's actual policy update — and the only way to close that gap is to build the machinery that goes and looks, every time, rather than trusting the model to already know.</p>
+
+    <p class="kicker">The model was never the part holding your company's actual answer. It was always going to be whatever document someone bothered to wire up correctly.</p>
+
+    <div class="source-note">Researched for this piece: Lewis et al., "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" (Meta AI, NeurIPS 2020); Anthropic's November 2024 announcement of the Model Context Protocol and its December 2025 transfer to the Agentic AI Foundation under the Linux Foundation; current industry documentation on hybrid search, reranking, and embedding dimensionality in production RAG pipelines; and Gamage (2026), "Omission Constraints Decay While Commission Constraints Persist in Long-Context LLM Agents," on instruction-following decay over conversation depth.</div>
+
+    <div class="byline">
+      <div class="name">Ali Asgar Kanchwala</div>
+      15+ years · Network Security · AI Systems & Infrastructure · Abu Dhabi, UAE
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const sources = {
+    memory: {
+      tag: 'No retrieval — answering from training data alone',
+      body: 'A confident, well-formed answer describing what VPN access policies typically include for contractors — time-limited credentials, MFA requirements, scoped network access. Reads as authoritative. Describes nobody\'s actual policy, including yours.',
+      source: 'Source: a statistical impression of "VPN policy" documents in general, formed during training and frozen since the knowledge cutoff.'
+    },
+    rag: {
+      tag: 'After retrieval — the actual policy document was fetched first',
+      body: 'States, specifically, that contractor VPN access at this organization requires a signed NDA on file, expires automatically after 90 days, and is restricted to the segmented contractor VLAN — because that\'s what the retrieved document actually says.',
+      source: 'Source: Section 4.2 of the retrieved internal access policy document, fetched at query time and placed directly in the prompt.'
+    }
+  };
+
+  function showSource(key) {
+    document.getElementById('btn-memory').classList.toggle('active', key === 'memory');
+    document.getElementById('btn-rag').classList.toggle('active', key === 'rag');
+    const s = sources[key];
+    document.getElementById('widget-output').innerHTML = `
+      <div class="output-card">
+        <span class="output-tag">${s.tag}</span>
+        <div class="output-body">${s.body}</div>
+        <div class="output-source">${s.source}</div>
+      </div>
+    `;
+    document.getElementById('widget-foot').textContent = key === 'memory'
+      ? 'Same model, same weights as the tab on the right. The only thing missing is a document to read before answering.'
+      : 'Same model, same weights as the tab on the left. The only thing different: someone fetched the right paragraph first.';
+  }
+
+  showSource('memory');
+  //script for navigation
+document.addEventListener('DOMContentLoaded', () => {
+  const scrollContainer = document.querySelector('.series-links-scroll');
+  const leftArrow = document.getElementById('nav-arrow-left');
+  const rightArrow = document.getElementById('nav-arrow-right');
+
+  if (!scrollContainer || !leftArrow || !rightArrow) return;
+
+  let scrollInterval;
+  const scrollSpeed = 4; // Higher numbers = faster scroll speed
+
+  function startScrolling(direction) {
+    // Clear any active running frame loops safely
+    clearInterval(scrollInterval);
+    
+    scrollInterval = setInterval(() => {
+      // Temporarily bypass CSS smooth transition for uninterrupted responsive JS loops
+      scrollContainer.style.scrollBehavior = 'auto';
+      
+      if (direction === 'left') {
+        scrollContainer.scrollLeft -= scrollSpeed;
+      } else {
+        scrollContainer.scrollLeft += scrollSpeed;
+      }
+    }, 10); // Loop cadence running smoothly at ~100fps
+  }
+
+  function stopScrolling() {
+    clearInterval(scrollInterval);
+    // Restore clean default CSS swipe mechanics for mobile devices
+    scrollContainer.style.scrollBehavior = 'smooth';
+  }
+
+  // Bind Mouse Hover Listeners to the Left Arrow
+  leftArrow.addEventListener('mouseenter', () => startScrolling('left'));
+  leftArrow.addEventListener('mouseleave', stopScrolling);
+
+  // Bind Mouse Hover Listeners to the Right Arrow
+  rightArrow.addEventListener('mouseenter', () => startScrolling('right'));
+  rightArrow.addEventListener('mouseleave', stopScrolling);
+});  
+</script>
+
+</body>
+</html>

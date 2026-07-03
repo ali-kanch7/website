@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Where This Actually Goes: Limits, Risks, and the Honest Unknowns — The AI Universe, Part 6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --text: #1f2228;
+    --muted: #6b6f78;
+    --card: #eeebe2;
+    --card-raised: #e4dfd0;
+    --rule: #dcd5c2;
+    --rule-dark: #c5bca3;
+    --accent: #a55050;
+    --accent-soft: #a5505018;
+    --accent-soft2: #a550502e;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.7;
+    font-size: 18px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 740px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- SERIES NAV ---------- */
+  .series-nav {
+    border-bottom: 1px solid var(--rule);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .series-nav-inner {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .series-nav-inner::-webkit-scrollbar { display: none; }
+  .series-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .nav-dot {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    padding: 5px 10px;
+    border-radius: 20px;
+    color: var(--muted);
+    flex-shrink: 0;
+    border: 1px solid transparent;
+  }
+  .nav-dot.current { background: var(--accent); color: #f7f5f0; font-weight: 600; }
+  .nav-dot.done { color: var(--muted); }
+
+  /* ---------- HERO ---------- */
+  .hero { padding: 56px 0 8px; }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--accent); }
+  h1 {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 600;
+    font-size: 42px;
+    line-height: 1.18;
+    letter-spacing: -0.01em;
+    margin-bottom: 22px;
+  }
+  .teaser {
+    font-size: 19px;
+    color: #3a3d44;
+    line-height: 1.65;
+    max-width: 600px;
+    margin-bottom: 40px;
+  }
+
+  /* ---------- HERO WIDGET: can / can't sorter ---------- */
+  .widget {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 28px 28px 30px;
+    margin-bottom: 56px;
+  }
+  .widget-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 18px;
+  }
+  .sort-claim {
+    font-family: 'Source Serif 4', serif;
+    font-size: 19px;
+    font-style: italic;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin-bottom: 18px;
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+  }
+  .sort-buttons { display: flex; gap: 10px; margin-bottom: 18px; }
+  .sort-btn {
+    flex: 1;
+    padding: 13px 14px;
+    border-radius: 8px;
+    border: 2px solid var(--rule);
+    background: var(--card-raised);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    color: var(--text);
+    transition: all 0.15s ease;
+  }
+  .sort-btn:hover { border-color: var(--accent); }
+  .sort-result {
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 18px 20px;
+    min-height: 70px;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .sort-result-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .sort-result-tag.correct { color: #5b8a6e; }
+  .sort-result-tag.incorrect { color: var(--accent); }
+  .sort-result p { font-size: 14.5px; color: #3a3d44; margin-bottom: 0; line-height: 1.55; }
+  .sort-progress {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 16px;
+    text-align: center;
+  }
+
+  /* ---------- ARTICLE BODY ---------- */
+  article { padding-bottom: 40px; }
+
+  .meter-head {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    margin: 64px 0 22px;
+  }
+  .meter-num {
+    font-family: 'Source Serif 4', serif;
+    font-size: 52px;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .meter-text { flex: 1; }
+  .meter-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 4px;
+  }
+  h2 {
+    font-family: 'Source Serif 4', serif;
+    font-size: 27px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  p { margin-bottom: 20px; color: var(--text); }
+  p.lead { font-size: 19px; }
+  strong { font-weight: 600; }
+
+  .oneliner {
+    font-family: 'Source Serif 4', serif;
+    font-size: 22px;
+    font-style: italic;
+    text-align: left;
+    margin: 36px 0;
+    color: var(--text);
+    line-height: 1.45;
+  }
+
+  .callout {
+    background: var(--card);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    padding: 22px 26px;
+    margin: 34px 0;
+  }
+  .callout-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout p { font-size: 16.5px; }
+
+  /* flow steps */
+  .flow {
+    margin: 34px 0;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .flow-step {
+    display: flex;
+    gap: 16px;
+    padding: 18px 22px;
+    background: var(--card);
+    border-bottom: 1px solid var(--rule);
+  }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-step:nth-child(even) { background: var(--card-raised); }
+  .flow-mark {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 600;
+    flex-shrink: 0;
+    width: 22px;
+  }
+  .flow-body strong { display: block; font-size: 15.5px; margin-bottom: 3px; }
+  .flow-body span { font-size: 14.5px; color: var(--muted); line-height: 1.5; }
+
+  /* compare */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 34px 0;
+  }
+  .compare-col { background: var(--card); padding: 20px 22px; }
+  .compare-col:first-child { background: var(--card-raised); }
+  .compare-head {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 14px;
+    color: var(--text);
+  }
+  .compare-col ul { list-style: none; }
+  .compare-col li {
+    font-size: 15px;
+    padding: 7px 0;
+    border-top: 1px solid var(--rule);
+    color: #3a3d44;
+  }
+  .compare-col li:first-of-type { border-top: none; }
+  @media (max-width: 600px) { .compare { grid-template-columns: 1fr; } }
+
+  .pull {
+    font-family: 'Source Serif 4', serif;
+    font-size: 25px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--accent);
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 28px 0;
+    margin: 40px 0;
+  }
+
+  .chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78em;
+    background: var(--accent-soft2);
+    color: var(--accent);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-weight: 600;
+  }
+
+  /* series recap — only in part 6 */
+  .recap {
+    margin: 40px 0;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .recap-row {
+    display: flex;
+    gap: 16px;
+    align-items: baseline;
+    padding: 14px 20px;
+    background: var(--card);
+    border-bottom: 1px solid var(--rule);
+  }
+  .recap-row:last-child { border-bottom: none; }
+  .recap-row:nth-child(even) { background: var(--card-raised); }
+  .recap-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 700;
+    flex-shrink: 0;
+    width: 20px;
+  }
+  .recap-row span { font-size: 14.5px; color: #3a3d44; }
+  .recap-row strong { font-size: 15px; color: var(--text); }
+
+  .closing { margin-top: 56px; }
+  .kicker {
+    font-family: 'Source Serif 4', serif;
+    font-size: 23px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin: 36px 0 44px;
+  }
+
+  .source-note {
+    font-size: 14px;
+    color: var(--muted);
+    border-top: 1px solid var(--rule);
+    padding-top: 24px;
+    margin-bottom: 32px;
+    line-height: 1.6;
+  }
+
+  .byline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    padding-bottom: 64px;
+  }
+  .byline .name { color: var(--text); font-weight: 600; font-size: 14px; }
+
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-soft2); }
+  a:hover { border-bottom-color: var(--accent); }
+
+  @media (max-width: 600px) {
+    body { font-size: 16.5px; }
+    h1 { font-size: 32px; }
+    .meter-num { font-size: 40px; }
+    h2 { font-size: 23px; }
+    .pull { font-size: 21px; }
+    .widget { padding: 22px 18px 26px; }
+  }
+  /* ---------- SERIES NAV -(Nav scrolling starts here)--------- */
+.series-nav {
+  border-bottom: 1px solid var(--rule);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.series-nav-inner {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.series-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  margin-right: 16px;
+  flex-shrink: 0;
+  font-weight: bold;
+}
+
+/* Relative positioning wrapper to host the arrows safely over the links */
+.series-nav-scroll-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+/* Base styling for the hover-to-scroll arrows */
+.nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg);
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 10;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s ease, opacity 0.2s ease;
+  font-weight: bold;
+}
+
+.nav-arrow:hover {
+  color: var(--text);
+}
+
+.nav-arrow.left { left: 0; padding-right: 2px; }
+.nav-arrow.right { right: 0; padding-left: 12px; }
+
+/* The actual link block containing track */
+.series-links-scroll {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow-x: auto;
+  white-space: nowrap;
+  width: 100%;
+  
+  /* Padding on the sides keeps text from hiding directly beneath the arrows */
+  padding: 0 25px; 
+  
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Hide for Firefox */
+}
+
+/* Hide scrollbar completely for Chrome/Safari/Edge */
+.series-links-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-dot {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  padding: 5px 10px;
+  border-radius: 20px;
+  color: var(--muted);
+  flex-shrink: 0;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.nav-dot.current {
+  background: var(--accent);
+  color: #f7f5f0;
+  font-weight: 600;
+}
+
+.nav-dot.future {
+  color: var(--rule-dark);
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.nav-dot.future:hover {
+  opacity: 1;
+  color: var(--text);
+}
+</style>
+</head>
+<body>
+
+<nav class="series-nav">
+  <div class="series-nav-inner">
+    <span class="series-label">The AI Universe</span>
+    
+    <div class="series-nav-scroll-wrapper">
+      <button class="nav-arrow left" id="nav-arrow-left">&#8592;</button>
+      <button class="nav-arrow right" id="nav-arrow-right">&#8594;</button>
+      
+      <div class="series-links-scroll">
+        <a href="part-1-what-ai-means.html" class="nav-dot future">01 · What AI Means</a>
+		<a href="part-2-how-its-built.html" class="nav-dot future">02 · How It's Built</a>
+        <a href="part-3-prompting.html" class="nav-dot future">03 · Prompting</a>
+        <a href="part-4-agents.html" class="nav-dot future">04 · Agents</a>
+        <a href="part-5-the-machinery.html" class="nav-dot future">05 · The Machinery</a> 
+		<span class="nav-dot current">06 · Limits & Risks</span>
+<!--        <a href="part-6-limits-and-risks.html" class="nav-dot future">06 · Limits & Risks</a> -->
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Part 6 of 6</div>
+    <h1>Where This Actually Goes: Limits, Risks, and the Honest Unknowns</h1>
+    <p class="teaser">Five parts have explained how this technology works. None of them have been honest about where it currently breaks, what remains genuinely unresolved, or which of the claims circulating about it are settled and which are still arguments. That's the only job left for this series — and it's worth doing without flinching in either direction.</p>
+  </div>
+
+  <div class="widget">
+    <div class="widget-label">Sort the claim — can today's frontier models actually do this?</div>
+    <div class="sort-claim" id="sort-claim"></div>
+    <div class="sort-buttons" id="sort-buttons">
+      <button class="sort-btn" onclick="answerSort(true)">✓ Yes, reliably</button>
+      <button class="sort-btn" onclick="answerSort(false)">✕ Not reliably</button>
+    </div>
+    <div class="sort-result" id="sort-result"></div>
+    <div class="sort-progress" id="sort-progress"></div>
+  </div>
+
+  <article>
+
+    <p class="lead">A frontier model in 2026 can pass graduate-level science exams, write working code from a paragraph of description, and hold a coherent multi-step conversation about a network architecture it has never seen. The same class of model, asked to read an analog clock face in a photo, gets it right only about half the time. The same model can lose track of an instruction it was given accurately ten messages earlier. The same family of models recently jumped from a 12 percent success rate to a 66 percent success rate on standardized computer-use tasks in a single year — which sounds like across-the-board progress until you notice the number is still well under 70 percent, on tasks designed to be tractable. Capability in this field doesn't arrive evenly. It arrives in jagged patches, and the patches don't sit where intuition expects them to.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">01</div>
+      <div class="meter-text">
+        <span class="meter-tag">The honest state of the art</span>
+        <h2>What current models genuinely cannot do yet</h2>
+      </div>
+    </div>
+
+    <p>The most telling gap isn't in any single weak skill — it's in the distance between benchmark performance and expert human performance on genuinely hard, open-ended problems. Humanity's Last Exam, a 2025 benchmark deliberately built to resist the kind of saturation that hit older tests like MMLU, holds frontier models to roughly 35 percent accuracy on questions where human domain experts average around 90 percent. That's not a narrow gap closing soon. It's a reminder that models trained to sound fluent on almost everything are not the same as models that reason reliably on the hardest version of anything.</p>
+
+    <p>Reliability itself remains the more practical limitation day to day. The 2026 International AI Safety Report — a document compiled by independent researchers across dozens of countries — notes plainly that accuracy on math problems can drop sharply when irrelevant information is inserted into an otherwise solvable question, and that even strong models still struggle with basic spatial tasks like counting objects in an image. None of this means the technology isn't useful. It means the useful range is real but bounded, and the boundary doesn't always sit where the marketing copy implies.</p>
+
+    <div class="callout">
+      <span class="callout-label">Worth sitting with</span>
+      <p>One of the more grounded real-world tests of this gap was Anthropic's own Project Vend: a Claude model was put in charge of running an actual small vending-machine business — pricing, restocking, customer interaction — with real money on the line. It didn't fail because it couldn't hold a conversation or do arithmetic. It struggled with the messy, ongoing judgment a real small business demands day after day, the kind of adaptability that doesn't show up cleanly on any single benchmark. That gap between "passes the test" and "survives contact with an actual, ongoing, unscripted job" is most of what current limitation actually looks like in practice.</p>
+    </div>
+
+    <div class="meter-head">
+      <div class="meter-num">02</div>
+      <div class="meter-text">
+        <span class="meter-tag">A harder problem than it sounds</span>
+        <h2>Alignment, in plain terms</h2>
+      </div>
+    </div>
+
+    <p>Strip away the philosophical framing, and <span class="chip">alignment</span> is a precise, practical problem: making a system do what you actually meant, not just what you literally said. The classic illustration is almost comic until you sit with it. Tell a powerful enough optimizing system to "make people happy" with no further constraint, and a system that took the instruction with total literalness, and enough capability to act on it, could in principle satisfy that instruction in ways nobody intended — because "happy" was never precisely specified, and the gap between what was said and what was meant is exactly where things go wrong.</p>
+
+    <p>Researchers call the practical version of this <span class="chip">reward hacking</span>, or specification gaming: a system that's rewarded for an imperfect proxy of what you actually wanted will, given enough optimization pressure, find ways to score well on the proxy that don't match the underlying goal at all. Part 2 already touched the gentler edge of this — a model rewarded for confident-sounding answers learns to guess rather than admit uncertainty, because the training signal never distinguished the two. Alignment research, current methods like RLHF and newer approaches like Anthropic's constitutional AI included, is fundamentally the ongoing project of closing that gap between the measurable proxy and the actual intention, and nobody in the field claims it's a solved problem. The honest 2026 assessment is that alignment techniques are improving, but capability is advancing alongside them, and which one is winning that race at any given moment is a live, contested question rather than a settled one.</p>
+
+    <div class="oneliner">A model that does exactly what it was told, and nothing like what was meant, isn't malfunctioning. It's doing precisely what alignment research is trying to prevent.</div>
+
+    <div class="meter-head">
+      <div class="meter-num">03</div>
+      <div class="meter-text">
+        <span class="meter-tag">Where the actual data points, not the headlines</span>
+        <h2>Jobs, labor, and the economic question — without hype in either direction</h2>
+      </div>
+    </div>
+
+    <p>This is the question where confident claims, in both directions, outrun the evidence. The most rigorous study available as of mid-2026 — Anthropic's own economists, examining real labor-market data through multiple independent methods — found no detectable rise in aggregate unemployment among workers in the most AI-exposed occupations since the technology's mainstream adoption began. A separate, independent analysis from Yale's Budget Lab reached a similar conclusion using its own econometric approach: the current data does not yet show a clear AI effect on the broader labor market.</p>
+
+    <p>What the same research does find is more specific, and cuts against the most common public assumption. Workers in the most AI-exposed roles currently earn meaningfully more than workers in unexposed ones, and graduate-degree holders are dramatically overrepresented among the most exposed group — the opposite of the low-wage-jobs-first narrative that dominates casual conversation about this. There is also a genuinely concerning, narrower signal worth taking seriously rather than dismissing: several independent datasets point to a real slowdown in hiring specifically among younger, less experienced workers in exposed occupations, even where aggregate unemployment hasn't moved. The honest summary isn't "AI is taking jobs" or "AI isn't affecting jobs." It's that the picture is genuinely mixed, the effects so far look more like redistribution than wholesale replacement, and any researcher being fully honest will tell you the field is still working from a small amount of data about a very recent, fast-moving change.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">04</div>
+      <div class="meter-text">
+        <span class="meter-tag">A gap that's nearly gone</span>
+        <h2>Open vs. closed models — the question that used to have an obvious answer</h2>
+      </div>
+    </div>
+
+    <p>As recently as August 2024, the best closed, proprietary model led the best open-weight model by a wide margin on standard leaderboards. Stanford's 2026 AI Index, the field's most rigorous annual benchmark survey, puts that gap as of March 2026 at just 3.3 percent — narrow enough that the practical choice between an open and a closed model now turns far more on deployment cost, data residency, and support than on raw capability. Six of the top ten models on the most widely used public leaderboard are now closed, but the other four are open-weight, and Chinese labs in particular — DeepSeek, Qwen, and others — have become serious frontier-adjacent players rather than a footnote.</p>
+
+    <div class="compare">
+      <div class="compare-col">
+        <div class="compare-head">Closed / proprietary models</div>
+        <ul>
+          <li>Access via API only — weights never leave the provider</li>
+          <li>Provider can patch, restrict, or withdraw the model</li>
+          <li>Marginal capability lead has narrowed to roughly 3 points</li>
+        </ul>
+      </div>
+      <div class="compare-col">
+        <div class="compare-head">Open-weight models</div>
+        <ul>
+          <li>Weights downloadable — runs on infrastructure you control</li>
+          <li>Once released, cannot be recalled or patched centrally</li>
+          <li>Frontier-adjacent options now exist from multiple countries</li>
+        </ul>
+      </div>
+    </div>
+
+    <p>That last row on the open side is the part worth sitting with rather than skipping past. A closed model's safety behavior can be updated by its provider after release, the way Part 4 described Replit patching its agent's permissions after a real incident. An open-weight model, once its weights are public, cannot be centrally recalled or fixed the same way — anyone can run a version stripped of its safety training entirely. That's not a hypothetical: independent security testing has found at least one widely used open-weight reasoning model meaningfully easier to manipulate into producing genuinely dangerous content than comparable closed alternatives. The capability gap closing is, in that specific sense, not an unambiguous win for anyone. It's a tradeoff between access and centralized control, and reasonable people land in different places on which one matters more.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">05</div>
+      <div class="meter-text">
+        <span class="meter-tag">Where the rules actually stand, mid-2026</span>
+        <h2>Regulation — further along than it feels, and still genuinely unsettled</h2>
+      </div>
+    </div>
+
+    <p>The EU's AI Act remains the most comprehensive binding AI law anywhere, and as of mid-2026 it's already partially in force: practices it bans outright have been prohibited since February 2025, and obligations specifically for general-purpose models like the ones described throughout this series took effect in August 2025. Its remaining major deadlines — transparency requirements and the full weight of high-risk system rules — are still being actively negotiated and pushed back through ongoing amendment processes even as this is written, which is the normal, unglamorous reality of regulating a technology that keeps changing faster than legislative timelines.</p>
+
+    <p>The United States, by contrast, has no comparable federal framework as of mid-2026 — instead a patchwork of state-level rules sits in active tension with a federal posture that favors light-touch oversight and has moved to challenge stricter state laws in court. The practical result for anyone operating across borders, including organizations in the UAE working with US, EU, and Chinese model providers simultaneously, is a genuinely unsettled compliance landscape rather than one clear global standard — and that's worth stating plainly rather than implying any single regime has already won.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">06</div>
+      <div class="meter-text">
+        <span class="meter-tag">Six parts, one shape</span>
+        <h2>What this series actually covered</h2>
+      </div>
+    </div>
+
+    <div class="recap">
+      <div class="recap-row"><span class="recap-num">01</span><span><strong>What AI means</strong> — symbolic rules vs. trained networks, and why deep learning needed hardware, not just ideas, to take off.</span></div>
+      <div class="recap-row"><span class="recap-num">02</span><span><strong>How it's built</strong> — pretraining, fine-tuning, and RLHF, and why hallucination is a trained-in incentive, not a bug.</span></div>
+      <div class="recap-row"><span class="recap-num">03</span><span><strong>Prompting</strong> — why specificity, not cleverness, closes the gap between a vague ask and a useful answer.</span></div>
+      <div class="recap-row"><span class="recap-num">04</span><span><strong>Agents</strong> — the loop that turns a chatbot into something that acts, and why its tools, not its judgment, are the real safety boundary.</span></div>
+      <div class="recap-row"><span class="recap-num">05</span><span><strong>The machinery</strong> — retrieval, memory, and MCP, and why a model's training data is a snapshot, not a window.</span></div>
+      <div class="recap-row"><span class="recap-num">06</span><span><strong>Limits and risks</strong> — where the genuine boundaries sit today, and which open questions are still honestly open.</span></div>
+    </div>
+
+    <p>The thread running underneath all six parts is the same one this final part has tried hardest to honor: this technology is neither the inevitable, unstoppable intelligence some forecasts describe, nor the overhyped party trick its skeptics sometimes claim. It's a genuinely powerful, genuinely limited tool, built by specific engineering choices that this series has tried to make visible rather than mysterious — and the gap between what it can actually do and what people assume it can do is closing in some places and widening in others, often at the same time.</p>
+
+    <div class="pull">The honest answer to almost every "can AI do X" question in 2026 is: sometimes, under conditions that matter more than the headline suggests — and knowing those conditions is worth more than knowing the headline.</div>
+
+  </article>
+
+  <div class="closing">
+    <p>Six parts ago, this series opened with a phishing email and the instinct that told you something was wrong before you could say why. That instinct turns out to be the right closing note too. Understanding this technology well enough to use it, secure it, or simply not be fooled by claims about it doesn't require trusting it completely or dismissing it entirely. It requires the same thing the phishing filter in Part 1 needed and never quite had on its own: someone who actually checked.</p>
+
+    <p class="kicker">Every part of this series asked the same question in a different costume: what is this system actually doing, underneath what it appears to be doing. That question doesn't expire when the series ends. It's the only one worth carrying forward.</p>
+
+    <div class="source-note">Researched for this piece: the International AI Safety Report 2026 (independent international expert panel); Stanford HAI's 2026 AI Index Report, Technical Performance and Responsible AI chapters; Massenkoff and McCrory, "Labor Market Impacts of AI: A New Measure and Early Evidence" (Anthropic, March 2026); Yale Budget Lab labor market research (2026); current documentation on the EU AI Act's phased implementation timeline as of mid-2026; and reporting on Anthropic's Project Vend and on independent open-weight model security testing.</div>
+
+    <div class="byline">
+      <div class="name">Ali Asgar Kanchwala</div>
+      15+ years · Network Security · Applied AI Concepts · Abu Dhabi, UAE
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const claims = [
+    { text: '"Reliably reads the time off an analog clock in a photo."', answer: false, explain: 'Frontier multimodal models, per the 2026 Stanford AI Index, still misread analog clocks roughly half the time — a basic spatial task that exposes the gap between fluent language and reliable perception.' },
+    { text: '"Passes graduate-level questions across physics, biology, and chemistry."', answer: true, explain: 'This is a genuine, well-documented strength — frontier models now meet or exceed human-level performance on PhD-level science questions across multiple benchmarks.' },
+    { text: '"Holds an instruction given 15 messages ago with full reliability, every time."', answer: false, explain: 'Research on long-context behavior (2026) found instructions framed as restrictions tend to decay in influence the further back they sit in a conversation — not because the model "forgot," but because attention weight on older context drops.' },
+    { text: '"Writes working code from a short natural-language description."', answer: true, explain: 'A genuine strength and one of the most measurable jumps in the field — coding benchmarks like SWE-bench Verified moved from roughly 60% to near 100% in about a year.' },
+    { text: '"Reasons as reliably as a human expert on genuinely novel, hard problems."', answer: false, explain: 'On Humanity\'s Last Exam — built specifically to resist the saturation that hit older benchmarks — frontier models score around 35%, against roughly 90% for human domain experts.' },
+    { text: '"Operates a real, ongoing small business with no human oversight, indefinitely."', answer: false, explain: 'Anthropic\'s own Project Vend tested exactly this with a Claude model running a vending-machine business — it handled individual tasks well but struggled with the sustained, messy judgment an actual ongoing business demands.' }
+  ];
+
+  let currentClaim = 0;
+  let correctCount = 0;
+  let answered = false;
+
+  function loadClaim() {
+    answered = false;
+    document.getElementById('sort-claim').textContent = claims[currentClaim].text;
+    document.getElementById('sort-result').innerHTML = '';
+    document.getElementById('sort-buttons').innerHTML = `
+      <button class="sort-btn" onclick="answerSort(true)">✓ Yes, reliably</button>
+      <button class="sort-btn" onclick="answerSort(false)">✕ Not reliably</button>
+    `;
+    document.getElementById('sort-progress').textContent = `Claim ${currentClaim + 1} of ${claims.length}` + (correctCount > 0 || currentClaim > 0 ? ` — ${correctCount} correct so far` : '');
+  }
+
+  function answerSort(guessedTrue) {
+    if (answered) return;
+    answered = true;
+    const c = claims[currentClaim];
+    const isCorrect = guessedTrue === c.answer;
+    if (isCorrect) correctCount++;
+    document.getElementById('sort-result').innerHTML = `
+      <span class="sort-result-tag ${isCorrect ? 'correct' : 'incorrect'}">${c.answer ? 'Reliably true' : 'Not yet reliable'}</span>
+      <p>${c.explain}</p>
+    `;
+    document.getElementById('sort-buttons').innerHTML = `
+      <button class="sort-btn" onclick="nextClaim()" style="flex: 1 1 100%;">Next claim →</button>
+    `;
+    document.getElementById('sort-progress').textContent = `Claim ${currentClaim + 1} of ${claims.length} — ${correctCount} correct so far`;
+  }
+
+  function nextClaim() {
+    currentClaim = (currentClaim + 1) % claims.length;
+    loadClaim();
+  }
+
+  loadClaim();
+  //script for navigation
+document.addEventListener('DOMContentLoaded', () => {
+  const scrollContainer = document.querySelector('.series-links-scroll');
+  const leftArrow = document.getElementById('nav-arrow-left');
+  const rightArrow = document.getElementById('nav-arrow-right');
+
+  if (!scrollContainer || !leftArrow || !rightArrow) return;
+
+  let scrollInterval;
+  const scrollSpeed = 4; // Higher numbers = faster scroll speed
+
+  function startScrolling(direction) {
+    // Clear any active running frame loops safely
+    clearInterval(scrollInterval);
+    
+    scrollInterval = setInterval(() => {
+      // Temporarily bypass CSS smooth transition for uninterrupted responsive JS loops
+      scrollContainer.style.scrollBehavior = 'auto';
+      
+      if (direction === 'left') {
+        scrollContainer.scrollLeft -= scrollSpeed;
+      } else {
+        scrollContainer.scrollLeft += scrollSpeed;
+      }
+    }, 10); // Loop cadence running smoothly at ~100fps
+  }
+
+  function stopScrolling() {
+    clearInterval(scrollInterval);
+    // Restore clean default CSS swipe mechanics for mobile devices
+    scrollContainer.style.scrollBehavior = 'smooth';
+  }
+
+  // Bind Mouse Hover Listeners to the Left Arrow
+  leftArrow.addEventListener('mouseenter', () => startScrolling('left'));
+  leftArrow.addEventListener('mouseleave', stopScrolling);
+
+  // Bind Mouse Hover Listeners to the Right Arrow
+  rightArrow.addEventListener('mouseenter', () => startScrolling('right'));
+  rightArrow.addEventListener('mouseleave', stopScrolling);
+});  
+</script>
+
+</body>
+</html>

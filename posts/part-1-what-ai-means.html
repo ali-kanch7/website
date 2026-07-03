@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What "AI" Actually Means Before It Means Anything Else — The AI Universe, Part 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --text: #1f2228;
+    --muted: #6b6f78;
+    --card: #eeebe2;
+    --card-raised: #e4dfd0;
+    --rule: #dcd5c2;
+    --rule-dark: #c5bca3;
+    --accent: #4a6fa5;
+    --accent-soft: #4a6fa518;
+    --accent-soft2: #4a6fa52e;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.7;
+    font-size: 18px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ---------- SERIES NAV ---------- */
+  .series-nav {
+    border-bottom: 1px solid var(--rule);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .series-nav-inner {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .series-nav-inner::-webkit-scrollbar { display: none; }
+  .series-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .nav-dot {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    padding: 5px 10px;
+    border-radius: 20px;
+    color: var(--muted);
+    flex-shrink: 0;
+    border: 1px solid transparent;
+  }
+  .nav-dot.current {
+    background: var(--accent);
+    color: #f7f5f0;
+    font-weight: 600;
+  }
+  .nav-dot.future {
+    color: var(--rule-dark);
+  }
+
+  /* ---------- HERO ---------- */
+  .hero {
+    padding: 56px 0 8px;
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 24px;
+    height: 1px;
+    background: var(--accent);
+  }
+  h1 {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 600;
+    font-size: 42px;
+    line-height: 1.18;
+    letter-spacing: -0.01em;
+    margin-bottom: 22px;
+  }
+  .teaser {
+    font-size: 19px;
+    color: #3a3d44;
+    line-height: 1.65;
+    max-width: 600px;
+    margin-bottom: 40px;
+  }
+
+  /* ---------- HERO WIDGET: rule-based vs trained ---------- */
+  .widget {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 28px 28px 32px;
+    margin-bottom: 56px;
+  }
+  .widget-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .widget-prompt {
+    font-family: 'Source Serif 4', serif;
+    font-size: 19px;
+    font-style: italic;
+    color: var(--text);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  .toggle-row {
+    display: flex;
+    background: var(--card-raised);
+    border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
+    margin-bottom: 22px;
+  }
+  .toggle-btn {
+    flex: 1;
+    padding: 11px 14px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+  }
+  .toggle-btn.active {
+    background: var(--accent);
+    color: #f7f5f0;
+  }
+  .widget-output {
+    min-height: 190px;
+  }
+  .output-card {
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px 22px;
+    font-size: 15.5px;
+    line-height: 1.6;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .output-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .rule-line {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    padding: 5px 0;
+    border-bottom: 1px dashed var(--rule);
+  }
+  .rule-line:last-child { border-bottom: none; }
+  .rule-line .fail { color: #a55050; }
+  .rule-line .pass { color: #5b8a6e; }
+  .widget-verdict {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .widget-foot {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 16px;
+    line-height: 1.5;
+  }
+
+  /* ---------- ARTICLE BODY ---------- */
+  article { padding-bottom: 40px; }
+
+  .meter-head {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    margin: 64px 0 22px;
+  }
+  .meter-num {
+    font-family: 'Source Serif 4', serif;
+    font-size: 52px;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .meter-text { flex: 1; }
+  .meter-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 4px;
+  }
+  h2 {
+    font-family: 'Source Serif 4', serif;
+    font-size: 27px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  p { margin-bottom: 20px; color: var(--text); }
+  p.lead { font-size: 19px; }
+
+  strong { font-weight: 600; }
+
+  .oneliner {
+    font-family: 'Source Serif 4', serif;
+    font-size: 22px;
+    font-style: italic;
+    text-align: left;
+    margin: 36px 0;
+    color: var(--text);
+    line-height: 1.45;
+  }
+
+  /* callout */
+  .callout {
+    background: var(--card);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    padding: 22px 26px;
+    margin: 34px 0;
+  }
+  .callout-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout p { font-size: 16.5px; }
+
+  /* comparison table */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 34px 0;
+  }
+  .compare-col { background: var(--card); padding: 20px 22px; }
+  .compare-col:first-child { background: var(--card-raised); }
+  .compare-head {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 14px;
+    color: var(--text);
+  }
+  .compare-col ul { list-style: none; }
+  .compare-col li {
+    font-size: 15px;
+    padding: 7px 0;
+    border-top: 1px solid var(--rule);
+    color: #3a3d44;
+  }
+  .compare-col li:first-of-type { border-top: none; }
+
+  @media (max-width: 600px) {
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  /* pull quote */
+  .pull {
+    font-family: 'Source Serif 4', serif;
+    font-size: 25px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--accent);
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 28px 0;
+    margin: 40px 0;
+  }
+
+  /* term chip */
+  .chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78em;
+    background: var(--accent-soft2);
+    color: var(--accent);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-weight: 600;
+  }
+
+  /* closing */
+  .closing { margin-top: 56px; }
+  .kicker {
+    font-family: 'Source Serif 4', serif;
+    font-size: 23px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin: 36px 0 44px;
+  }
+
+  .source-note {
+    font-size: 14px;
+    color: var(--muted);
+    border-top: 1px solid var(--rule);
+    padding-top: 24px;
+    margin-bottom: 32px;
+    line-height: 1.6;
+  }
+
+  .byline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    padding-bottom: 64px;
+  }
+  .byline .name {
+    color: var(--text);
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-soft2); }
+  a:hover { border-bottom-color: var(--accent); }
+
+  @media (max-width: 600px) {
+    body { font-size: 16.5px; }
+    h1 { font-size: 32px; }
+    .meter-num { font-size: 40px; }
+    h2 { font-size: 23px; }
+    .pull { font-size: 21px; }
+    .widget { padding: 22px 18px 26px; }
+  }
+  
+  /* ---------- SERIES NAV -(Nav scrolling starts here)--------- */
+.series-nav {
+  border-bottom: 1px solid var(--rule);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.series-nav-inner {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.series-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  margin-right: 16px;
+  flex-shrink: 0;
+  font-weight: bold;
+}
+
+/* Relative positioning wrapper to host the arrows safely over the links */
+.series-nav-scroll-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+/* Base styling for the hover-to-scroll arrows */
+.nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg);
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 10;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s ease, opacity 0.2s ease;
+  font-weight: bold;
+}
+
+.nav-arrow:hover {
+  color: var(--text);
+}
+
+.nav-arrow.left { left: 0; padding-right: 2px; }
+.nav-arrow.right { right: 0; padding-left: 12px; }
+
+/* The actual link block containing track */
+.series-links-scroll {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow-x: auto;
+  white-space: nowrap;
+  width: 100%;
+  
+  /* Padding on the sides keeps text from hiding directly beneath the arrows */
+  padding: 0 25px; 
+  
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Hide for Firefox */
+}
+
+/* Hide scrollbar completely for Chrome/Safari/Edge */
+.series-links-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-dot {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  padding: 5px 10px;
+  border-radius: 20px;
+  color: var(--muted);
+  flex-shrink: 0;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.nav-dot.current {
+  background: var(--accent);
+  color: #f7f5f0;
+  font-weight: 600;
+}
+
+.nav-dot.future {
+  color: var(--rule-dark);
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.nav-dot.future:hover {
+  opacity: 1;
+  color: var(--text);
+}
+  
+</style>
+</head>
+<body>
+
+<nav class="series-nav">
+  <div class="series-nav-inner">
+    <span class="series-label">The AI Universe</span>
+    
+    <div class="series-nav-scroll-wrapper">
+      <button class="nav-arrow left" id="nav-arrow-left">&#8592;</button>
+      <button class="nav-arrow right" id="nav-arrow-right">&#8594;</button>
+      
+      <div class="series-links-scroll">
+        <span class="nav-dot current">01 · What AI Means</span>
+        <a href="part-2-how-its-built.html" class="nav-dot future">02 · How It's Built</a>
+        <a href="part-3-prompting.html" class="nav-dot future">03 · Prompting</a>
+        <a href="part-4-agents.html" class="nav-dot future">04 · Agents</a>
+        <a href="part-5-the-machinery.html" class="nav-dot future">05 · The Machinery</a>
+        <a href="part-6-limits-and-risks.html" class="nav-dot future">06 · Limits & Risks</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Part 1 of 6</div>
+    <h1>What "AI" Actually Means Before It Means Anything Else</h1>
+    <p class="teaser">Every conversation about AI assumes you already know what the word is doing. Most people don't, and most explanations skip straight to the buzzwords. Start here instead — with what actually changed, and why it took seventy years to change.</p>
+  </div>
+
+  <div class="widget">
+    <div class="widget-label">Try it — same question, two different machines</div>
+    <div class="widget-prompt">"Is this email a phishing attempt?"</div>
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="btn-rule" onclick="showMode('rule')">Rule-based program</button>
+      <button class="toggle-btn" id="btn-trained" onclick="showMode('trained')">Trained neural network</button>
+    </div>
+    <div class="widget-output" id="output"></div>
+    <div class="widget-foot" id="widget-foot"></div>
+  </div>
+
+  <article>
+
+    <p class="lead">An email lands in your inbox. The subject line says your courier delivery failed and you need to click a link to reschedule. You've seen ten thousand of these. You don't reason through it — you just <em>know</em>, the way you know a forged signature looks slightly wrong before you can say why.</p>
+
+    <p>That instinct is worth pausing on, because it's the entire difference between two eras of artificial intelligence sitting inside one inbox. Some part of how email systems decide what's spam still runs on rules someone wrote down — if it contains this phrase, if the link domain doesn't match the display text, block it. Another part runs on a system that was never told a single rule, and instead looked at millions of real and fake emails until it developed something closer to your gut instinct. Both get called "AI." They are not the same thing, and the gap between them is most of what this part is about.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">01</div>
+      <div class="meter-text">
+        <span class="meter-tag">Two philosophies, one name</span>
+        <h2>The argument that split the field in two</h2>
+      </div>
+    </div>
+
+    <p>The term "artificial intelligence" was coined in 1955, for a workshop proposal at Dartmouth the following summer. For the next decade and a half, almost everyone working under that banner agreed on the basic approach: intelligence meant manipulating symbols according to logical rules. You'd hand-write the knowledge — "a bird has feathers," "if X then Y" — and build an engine that chained those facts together to answer questions. This is <span class="chip">symbolic AI</span>, sometimes called GOFAI, Good Old-Fashioned AI, by people who lived through what came after. Chess programs that calculated moves by explicit search. Medical diagnosis tools that worked through trees of doctor-supplied rules. It produced real, working systems — and it ran headlong into a wall once the problems stopped being clean.</p>
+
+    <p>The wall was the real world. Rules that work for chess fall apart for "is this a cat." Nobody can write down the complete rule for what makes a cat a cat — not in a way that survives a cat photographed from a weird angle, in bad light, half-hidden behind a sofa. By the late 1970s, symbolic AI's inability to handle this kind of fuzzy, real-world perception had a name: the first AI winter, a period when funding collapsed because the promised breakthroughs hadn't shown up.</p>
+
+    <p>The alternative had been waiting in the wings since the 1950s, mostly ignored: instead of writing the rules, let the machine find its own by looking at examples. This is <span class="chip">machine learning</span> — not a system that's told what a cat is, but one that's shown ten thousand pictures labeled "cat" and ten thousand labeled "not cat," and adjusts itself until it can tell the difference on photos it's never seen. Symbolic AI is a chess grandmaster reciting memorized openings. Machine learning is a child who's never read a chess book but has played ten thousand games and developed an intuition no rulebook captures.</p>
+
+    <div class="callout">
+      <span class="callout-label">Worth sitting with</span>
+      <p>Machine learning is a category, not a single technique. Decision trees, random forests, support vector machines, basic statistical models that predict house prices from square footage — all of it counts. What turned "machine learning" into the thing reshaping the world wasn't the category. It was one specific technique inside it, and it took almost sixty years to become practical.</p>
+    </div>
+
+    <div class="meter-head">
+      <div class="meter-num">02</div>
+      <div class="meter-text">
+        <span class="meter-tag">Layers, weights, and one ImageNet contest</span>
+        <h2>What a neural network actually is</h2>
+      </div>
+    </div>
+
+    <p>Strip away the brain metaphor for a second, because it causes more confusion than it solves. A neural network is a stack of simple mathematical functions, layered one after another. Each layer takes numbers in, multiplies them by other numbers called <span class="chip">weights</span>, adds them up, and passes the result to the next layer. That's it. The "intelligence" isn't in any single layer — it's in the values of those weights, and there can be billions of them.</p>
+
+    <p>Where do the weights come from? <span class="chip">Training</span>. You feed the network an example, see how wrong its answer was, and nudge every weight very slightly in the direction that would have made it less wrong. Do that a few hundred million times across a few hundred million examples, and the weights settle into values that, collectively, encode something like understanding — not because anyone designed them to, but because that's what minimizing error over enough examples produces. The technique that nudges the weights is called backpropagation, and it's been known since the 1980s. What was missing for another thirty years wasn't the idea. It was the horsepower.</p>
+
+    <p>The moment that changed is dateable almost to the day: September 30, 2012, when a network called AlexNet entered the ImageNet competition, an annual contest to correctly label photographs into one of a thousand categories. AlexNet didn't edge out the competition. It beat the second-place entry's error rate by nearly ten percentage points — <span class="chip">15.3% vs 26.2%</span> — in a contest where previous years had crept forward by fractions of a point. The network had 60 million weights, modest by today's standards, but it was trained using gaming GPUs repurposed for a job nobody had built them for, and that repurposing is arguably the real story. Deep learning — neural networks with many stacked layers, hence "deep" — wasn't a new idea in 2012. It was an old idea that finally had hardware capable of brute-forcing it at scale.</p>
+
+    <div class="oneliner">Deep learning didn't get invented in 2012. It got <em>affordable</em>.</div>
+
+    <p>That single contest result is why "AlexNet moment" gets used the way people use "Big Bang" — shorthand for the instant a slow-moving field suddenly wasn't slow anymore. Every major lab doubled down on deep learning within a few years. The path from there to a chatbot answering your questions runs through one more idea, and it's the one that actually explains why language specifically took off.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">03</div>
+      <div class="meter-text">
+        <span class="meter-tag">Why text, and why now</span>
+        <h2>The paper that made language tractable</h2>
+      </div>
+    </div>
+
+    <p>Images are spatial — a cat's ear is always near a cat's head, no matter where in the photo the cat sits. Language isn't spatial, it's sequential, and for years the standard approach processed a sentence one word at a time, left to right, carrying a kind of memory forward. It worked, but it was slow to train and bad at connecting a word to something said twenty words earlier.</p>
+
+    <p>In June 2017, a team of researchers — mostly at Google Brain — published a paper with a title that reads almost like a dare: "Attention Is All You Need." Their architecture, the <span class="chip">transformer</span>, threw out the word-by-word memory entirely. Instead, every word in a sentence looks directly at every other word at once and decides how relevant each one is to understanding itself — a mechanism called self-attention. Drop the pronoun "it" into a sentence with two possible nouns it could refer to, and self-attention is the machinery that works out which one. Crucially, because every word can be processed in parallel rather than one-by-one, transformers could be trained dramatically faster on much bigger piles of text using the same GPU hardware that had already worked for images.</p>
+
+    <p>This is the part most explanations skip past too quickly: the transformer wasn't built to power a chatbot. It was an efficiency trick for machine translation. Its real legacy turned out to be that it scaled almost absurdly well — train a bigger one on more text, and it kept getting better, with no obvious ceiling for years. That observation is what's now called a scaling law, and it's the reason every major AI lab spent the years after 2017 racing to build bigger transformers rather than searching for some entirely new architecture.</p>
+
+    <div class="compare">
+      <div class="compare-col">
+        <div class="compare-head">Original Transformer, 2017</div>
+        <ul>
+          <li>~65 million weights</li>
+          <li>Built for translation, not chat</li>
+          <li>Trained in 3.5 days on 8 GPUs</li>
+        </ul>
+      </div>
+      <div class="compare-col">
+        <div class="compare-head">GPT-3, 2020</div>
+        <ul>
+          <li>175 billion weights</li>
+          <li>Same core architecture, far larger</li>
+          <li>First model to show real few-shot ability</li>
+        </ul>
+      </div>
+    </div>
+
+    <p>Each weight in a network like this is one of the numbers a model adjusts during training — multiply a billion of them by the right inputs in the right pattern, and you get an output. "Parameter" and "weight" are used almost interchangeably in casual conversation, including in this series. A bigger parameter count usually means a model that can represent more nuance, at the cost of needing more data and more compute to train it properly — which is the seed of a question Part 2 spends real time on: whether bigger is even still the right strategy in 2026, now that the leading labs are competing as much on efficiency as on raw scale.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">04</div>
+      <div class="meter-text">
+        <span class="meter-tag">Four words people use as if they're one</span>
+        <h2>AI, ML, LLM, generative AI — untangled</h2>
+      </div>
+    </div>
+
+    <p>Here's where the casual conversation usually goes wrong, and it's worth being precise once, clearly, rather than gesturing at it repeatedly. These four terms nest inside each other like a set of boxes, not like four names for the same thing.</p>
+
+    <p><strong>Artificial intelligence</strong> is the outermost box — any system that performs a task we'd normally say requires intelligence. That includes the rule-based phishing filter from the top of this page. It includes a chess engine from 1997. It includes a thermostat with enough conditional logic to feel almost clever. Symbolic AI counts. So does machine learning.</p>
+
+    <p><strong>Machine learning</strong> is the box inside that one — AI systems that learn their behavior from data rather than having it hand-written. It's a category that includes plenty of things that aren't neural networks at all, like a spam filter built on a statistical technique called Naive Bayes, which has been quietly working since the 1990s.</p>
+
+    <p><strong>Deep learning</strong> sits inside machine learning specifically — the subset using many-layered neural networks, the AlexNet lineage. Not all machine learning is deep learning. Most of the machine learning running in production banking fraud systems, for instance, still isn't.</p>
+
+    <p><strong>Large language models</strong> are a specific application of deep learning, built using the transformer architecture, trained on enormous amounts of text to predict the next piece of that text. GPT-4, Gemini, and Claude are all LLMs. So is the system, by the way, that's helping draft anything you've recently seen described as "AI-written."</p>
+
+    <p><strong>Generative AI</strong> is a different cut through the same space — not a layer inside the others, but a description of what the output is. Any model, language or otherwise, that creates new content rather than just classifying or predicting a number, counts as generative. An LLM writing an email is generative AI. So is an image model painting a photo from a text description, or a voice model synthesizing speech. Generative AI is the term for the job the model does; LLM is a term for one specific kind of model that happens to do that job, for text.</p>
+
+    <div class="pull">A phishing filter that blocks a known bad domain is AI. It is not machine learning, not deep learning, and definitely not a large language model — and conflating the four is where most AI conversations quietly go wrong before they've even started.</div>
+
+    <p>None of this is pedantry for its own sake. If a vendor tells you their product uses "AI," that sentence is compatible with anything from a simple if-then rule to a hundred-billion-parameter transformer, and those two things have wildly different costs, failure modes, and security implications. Knowing which box you're actually in changes what questions are worth asking next.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">05</div>
+      <div class="meter-text">
+        <span class="meter-tag">Where Part 2 picks up</span>
+        <h2>The model you're talking to didn't appear fully formed</h2>
+      </div>
+    </div>
+
+    <p>Everything above explains how a transformer learns to predict the next word in a sentence with eerie fluency. It does not explain how that same system learned to refuse a request, follow an instruction, or sound like it's having a conversation rather than autocompleting a document. That's a separate, later stage of training entirely — and the gap between "predicts text well" and "behaves like an assistant" is wide enough that an entire technique, reinforcement learning from human feedback, exists just to close it. Part 2 picks up exactly there: pretraining, fine-tuning, why models hallucinate, what a context window actually limits, and the real story behind why the biggest model on the leaderboard isn't automatically the smartest choice for a given job.</p>
+
+  </article>
+
+  <div class="closing">
+    <p>The rule-based filter and the trained network at the top of this page will keep coexisting for a long time — most real security stacks already run both, layered, because each catches what the other misses. Neither replaced the other. Understanding which one you're relying on, and why, turns out to be most of what "understanding AI" actually means.</p>
+
+    <p class="kicker">A rulebook can only block what someone already wrote down. A trained network can only catch what looked enough like something it had already seen. Neither one is magic. That's the part worth remembering before anything else in this series.</p>
+
+    <div class="source-note">Researched for this piece: the Dartmouth AI Workshop proposal and the symbolic AI / connectionism split of the 1960s–70s; the AlexNet ImageNet 2012 result and its parameter count; the original "Attention Is All You Need" transformer paper (Vaswani et al., 2017) and its training cost; GPT-1 through GPT-3 parameter counts; and the current distinction in practice between rule-based and ML-based email filtering.</div>
+
+    <div class="byline">
+      <div class="name">Ali Asgar Kanchwala</div>
+      15+ years · Network Security · AI Systems & Infrastructure · Abu Dhabi, UAE
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const outputs = {
+    rule: {
+      tag: 'Rule-based program — symbolic AI',
+      body: `
+        <span class="output-tag">Checking hand-written rules, in order</span>
+        <div class="rule-line">Sender domain matches known courier? → <span class="fail">NO MATCH</span></div>
+        <div class="rule-line">Contains urgency phrase ("action required", "failed")? → <span class="fail">TRIGGERED</span></div>
+        <div class="rule-line">Link display text ≠ actual URL? → <span class="fail">TRIGGERED</span></div>
+        <div class="rule-line">Sender previously marked safe by user? → <span class="pass">NO</span></div>
+        <div class="widget-verdict">Verdict: 2 of 3 rules triggered → flagged as phishing.</div>
+      `,
+      foot: 'Every line here is a rule a person wrote in advance. Change the wording slightly — no urgency phrase, a cloned but valid-looking domain — and the same email can sail straight through, because the rule for that specific trick was never written.'
+    },
+    trained: {
+      tag: 'Trained neural network — machine learning',
+      body: `
+        <span class="output-tag">No rules. Comparing patterns learned from millions of past emails</span>
+        <div class="rule-line">Closest resemblance: <span class="fail">94% similar</span> to prior confirmed phishing samples</div>
+        <div class="rule-line">Header structure: <span class="fail">anomalous</span> vs. genuine courier traffic</div>
+        <div class="rule-line">No explicit "urgency" rule exists — the model was never told to look for one</div>
+        <div class="widget-verdict">Verdict: 96.2% confidence — phishing.</div>
+      `,
+      foot: 'Nobody wrote a rule about urgent language. The network was shown enough real and fake emails that it developed its own sense of what phishing "looks like" statistically — which is also why it can catch a trick nobody anticipated, and why it can be wrong in ways nobody can fully explain afterward.'
+    }
+  };
+
+  function showMode(mode) {
+    document.getElementById('btn-rule').classList.toggle('active', mode === 'rule');
+    document.getElementById('btn-trained').classList.toggle('active', mode === 'trained');
+    const data = outputs[mode];
+    document.getElementById('output').innerHTML = `<div class="output-card">${data.body}</div>`;
+    document.getElementById('widget-foot').textContent = data.foot;
+  }
+
+  showMode('rule');
+
+//script for navigation
+document.addEventListener('DOMContentLoaded', () => {
+  const scrollContainer = document.querySelector('.series-links-scroll');
+  const leftArrow = document.getElementById('nav-arrow-left');
+  const rightArrow = document.getElementById('nav-arrow-right');
+
+  if (!scrollContainer || !leftArrow || !rightArrow) return;
+
+  let scrollInterval;
+  const scrollSpeed = 4; // Higher numbers = faster scroll speed
+
+  function startScrolling(direction) {
+    // Clear any active running frame loops safely
+    clearInterval(scrollInterval);
+    
+    scrollInterval = setInterval(() => {
+      // Temporarily bypass CSS smooth transition for uninterrupted responsive JS loops
+      scrollContainer.style.scrollBehavior = 'auto';
+      
+      if (direction === 'left') {
+        scrollContainer.scrollLeft -= scrollSpeed;
+      } else {
+        scrollContainer.scrollLeft += scrollSpeed;
+      }
+    }, 10); // Loop cadence running smoothly at ~100fps
+  }
+
+  function stopScrolling() {
+    clearInterval(scrollInterval);
+    // Restore clean default CSS swipe mechanics for mobile devices
+    scrollContainer.style.scrollBehavior = 'smooth';
+  }
+
+  // Bind Mouse Hover Listeners to the Left Arrow
+  leftArrow.addEventListener('mouseenter', () => startScrolling('left'));
+  leftArrow.addEventListener('mouseleave', stopScrolling);
+
+  // Bind Mouse Hover Listeners to the Right Arrow
+  rightArrow.addEventListener('mouseenter', () => startScrolling('right'));
+  rightArrow.addEventListener('mouseleave', stopScrolling);
+});  
+  
+</script>
+
+</body>
+</html>

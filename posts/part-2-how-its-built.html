@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How a Model Like This Actually Gets Built — The AI Universe, Part 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --text: #1f2228;
+    --muted: #6b6f78;
+    --card: #eeebe2;
+    --card-raised: #e4dfd0;
+    --rule: #dcd5c2;
+    --rule-dark: #c5bca3;
+    --accent: #5b8a6e;
+    --accent-soft: #5b8a6e18;
+    --accent-soft2: #5b8a6e2e;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.7;
+    font-size: 18px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 740px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- SERIES NAV ---------- */
+  .series-nav {
+    border-bottom: 1px solid var(--rule);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .series-nav-inner {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .series-nav-inner::-webkit-scrollbar { display: none; }
+  .series-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .nav-dot {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    padding: 5px 10px;
+    border-radius: 20px;
+    color: var(--muted);
+    flex-shrink: 0;
+    border: 1px solid transparent;
+  }
+  .nav-dot.current { background: var(--accent); color: #f7f5f0; font-weight: 600; }
+  .nav-dot.future { color: var(--rule-dark); }
+  .nav-dot.done { color: var(--muted); }
+
+  /* ---------- HERO ---------- */
+  .hero { padding: 56px 0 8px; }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--accent); }
+  h1 {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 600;
+    font-size: 42px;
+    line-height: 1.18;
+    letter-spacing: -0.01em;
+    margin-bottom: 22px;
+  }
+  .teaser {
+    font-size: 19px;
+    color: #3a3d44;
+    line-height: 1.65;
+    max-width: 600px;
+    margin-bottom: 40px;
+  }
+
+  /* ---------- HERO WIDGET: training stage ladder ---------- */
+  .widget {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 28px 28px 30px;
+    margin-bottom: 56px;
+  }
+  .widget-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 18px;
+  }
+  .stage-track {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 24px;
+  }
+  .stage-btn {
+    flex: 1;
+    background: var(--card-raised);
+    border: none;
+    border-radius: 8px;
+    padding: 13px 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s ease;
+  }
+  .stage-btn .stage-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 4px;
+    letter-spacing: 0.05em;
+  }
+  .stage-btn .stage-name {
+    font-family: 'Inter', sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .stage-btn.active { background: var(--accent); }
+  .stage-btn.active .stage-num,
+  .stage-btn.active .stage-name { color: #f7f5f0; }
+
+  .stage-output {
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 22px 24px;
+    min-height: 200px;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .stage-output-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: block;
+  }
+  .stage-output h4 {
+    font-family: 'Source Serif 4', serif;
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .stage-output p {
+    font-size: 14.5px;
+    color: #3a3d44;
+    margin-bottom: 12px;
+    line-height: 1.6;
+  }
+  .stage-output p:last-child { margin-bottom: 0; }
+  .stage-sample {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    background: var(--card);
+    border-left: 2px solid var(--accent);
+    padding: 8px 12px;
+    border-radius: 0 6px 6px 0;
+    color: var(--text);
+    margin: 10px 0;
+  }
+
+  /* ---------- ARTICLE BODY ---------- */
+  article { padding-bottom: 40px; }
+
+  .meter-head {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    margin: 64px 0 22px;
+  }
+  .meter-num {
+    font-family: 'Source Serif 4', serif;
+    font-size: 52px;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .meter-text { flex: 1; }
+  .meter-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 4px;
+  }
+  h2 {
+    font-family: 'Source Serif 4', serif;
+    font-size: 27px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  p { margin-bottom: 20px; color: var(--text); }
+  p.lead { font-size: 19px; }
+  strong { font-weight: 600; }
+
+  .oneliner {
+    font-family: 'Source Serif 4', serif;
+    font-size: 22px;
+    font-style: italic;
+    text-align: left;
+    margin: 36px 0;
+    color: var(--text);
+    line-height: 1.45;
+  }
+
+  .callout {
+    background: var(--card);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    padding: 22px 26px;
+    margin: 34px 0;
+  }
+  .callout-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout p { font-size: 16.5px; }
+
+  /* flow steps (process list, not a 2-col compare) */
+  .flow {
+    margin: 34px 0;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .flow-step {
+    display: flex;
+    gap: 16px;
+    padding: 18px 22px;
+    background: var(--card);
+    border-bottom: 1px solid var(--rule);
+  }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-step:nth-child(even) { background: var(--card-raised); }
+  .flow-mark {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 600;
+    flex-shrink: 0;
+    width: 22px;
+  }
+  .flow-body strong { display: block; font-size: 15.5px; margin-bottom: 3px; }
+  .flow-body span { font-size: 14.5px; color: var(--muted); line-height: 1.5; }
+
+  .pull {
+    font-family: 'Source Serif 4', serif;
+    font-size: 25px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--accent);
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 28px 0;
+    margin: 40px 0;
+  }
+
+  .chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78em;
+    background: var(--accent-soft2);
+    color: var(--accent);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-weight: 600;
+  }
+
+  .closing { margin-top: 56px; }
+  .kicker {
+    font-family: 'Source Serif 4', serif;
+    font-size: 23px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin: 36px 0 44px;
+  }
+
+  .source-note {
+    font-size: 14px;
+    color: var(--muted);
+    border-top: 1px solid var(--rule);
+    padding-top: 24px;
+    margin-bottom: 32px;
+    line-height: 1.6;
+  }
+
+  .byline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    padding-bottom: 64px;
+  }
+  .byline .name { color: var(--text); font-weight: 600; font-size: 14px; }
+
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-soft2); }
+  a:hover { border-bottom-color: var(--accent); }
+
+  @media (max-width: 600px) {
+    body { font-size: 16.5px; }
+    h1 { font-size: 32px; }
+    .meter-num { font-size: 40px; }
+    h2 { font-size: 23px; }
+    .pull { font-size: 21px; }
+    .widget { padding: 22px 18px 26px; }
+    .stage-track { flex-wrap: wrap; }
+    .stage-btn { flex: 1 1 30%; }
+  }
+  /* ---------- SERIES NAV -(Nav scrolling starts here)--------- */
+.series-nav {
+  border-bottom: 1px solid var(--rule);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.series-nav-inner {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.series-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  margin-right: 16px;
+  flex-shrink: 0;
+  font-weight: bold;
+}
+
+/* Relative positioning wrapper to host the arrows safely over the links */
+.series-nav-scroll-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+/* Base styling for the hover-to-scroll arrows */
+.nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg);
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 10;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s ease, opacity 0.2s ease;
+  font-weight: bold;
+}
+
+.nav-arrow:hover {
+  color: var(--text);
+}
+
+.nav-arrow.left { left: 0; padding-right: 2px; }
+.nav-arrow.right { right: 0; padding-left: 12px; }
+
+/* The actual link block containing track */
+.series-links-scroll {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow-x: auto;
+  white-space: nowrap;
+  width: 100%;
+  
+  /* Padding on the sides keeps text from hiding directly beneath the arrows */
+  padding: 0 25px; 
+  
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Hide for Firefox */
+}
+
+/* Hide scrollbar completely for Chrome/Safari/Edge */
+.series-links-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-dot {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  padding: 5px 10px;
+  border-radius: 20px;
+  color: var(--muted);
+  flex-shrink: 0;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.nav-dot.current {
+  background: var(--accent);
+  color: #f7f5f0;
+  font-weight: 600;
+}
+
+.nav-dot.future {
+  color: var(--rule-dark);
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.nav-dot.future:hover {
+  opacity: 1;
+  color: var(--text);
+}
+</style>
+</head>
+<body>
+
+<nav class="series-nav">
+  <div class="series-nav-inner">
+    <span class="series-label">The AI Universe</span>
+    
+    <div class="series-nav-scroll-wrapper">
+      <button class="nav-arrow left" id="nav-arrow-left">&#8592;</button>
+      <button class="nav-arrow right" id="nav-arrow-right">&#8594;</button>
+      
+      <div class="series-links-scroll">
+        <a href="part-1-what-ai-means.html" class="nav-dot future">01 · What AI Means</a>
+        <span class="nav-dot current">02 · How It's Built</span>
+        <a href="part-3-prompting.html" class="nav-dot future">03 · Prompting</a>
+        <a href="part-4-agents.html" class="nav-dot future">04 · Agents</a>
+        <a href="part-5-the-machinery.html" class="nav-dot future">05 · The Machinery</a>
+        <a href="part-6-limits-and-risks.html" class="nav-dot future">06 · Limits & Risks</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Part 2 of 6</div>
+    <h1>How a Model Like This Actually Gets Built</h1>
+    <p class="teaser">Part 1 explained how a network learns to predict the next word. That alone gets you a very fluent autocomplete, not an assistant. Something else has to happen in between — and the gap between those two things is wider, and stranger, than most explanations let on.</p>
+  </div>
+
+  <div class="widget">
+    <div class="widget-label">Drag through the build — same model, three stages</div>
+    <div class="stage-track">
+      <button class="stage-btn active" id="stage-1" onclick="showStage(1)">
+        <span class="stage-num">STAGE 1</span>
+        <span class="stage-name">Pretraining</span>
+      </button>
+      <button class="stage-btn" id="stage-2" onclick="showStage(2)">
+        <span class="stage-num">STAGE 2</span>
+        <span class="stage-name">Fine-tuning</span>
+      </button>
+      <button class="stage-btn" id="stage-3" onclick="showStage(3)">
+        <span class="stage-num">STAGE 3</span>
+        <span class="stage-name">RLHF</span>
+      </button>
+    </div>
+    <div class="stage-output" id="stage-output"></div>
+  </div>
+
+  <article>
+
+    <p class="lead">Ask a model fresh out of pretraining a question — "what's the capital of the UAE?" — and there's a real chance it doesn't answer you at all. It might continue your sentence with three more questions in the same style, the way autocomplete on your phone keeps suggesting words rather than holding a conversation. That's not a bug. It's doing exactly the job it was trained for, which was never "answer questions." It was "predict what text comes next," and a quiz full of unanswered questions is, statistically, a very normal thing to find on the internet.</p>
+
+    <p>Getting from that raw, twitchy text-predictor to something that behaves like an assistant takes two more deliberate stages, built on top of the first. Each one reshapes the model's behavior without changing what it fundamentally is underneath: still the same stack of weights from Part 1, just nudged, again and again, toward usefulness.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">01</div>
+      <div class="meter-text">
+        <span class="meter-tag">Stage one, and the bill that comes with it</span>
+        <h2>Pretraining: reading almost everything, learning almost nothing on purpose</h2>
+      </div>
+    </div>
+
+    <p><span class="chip">Pretraining</span> is the stage from Part 1: feed the network a colossal pile of text — book archives, filtered web pages, code repositories, forums — and have it repeatedly guess the next token, get corrected, guess again. There is no teacher curating right answers here, no rulebook. The "training signal" is just the text itself; every sentence that already exists on the internet is simultaneously the question and the answer key.</p>
+
+    <p>This stage is also where almost the entire training budget goes, and the dollar figures are worth sitting with because they explain a lot of what comes later. The original 2017 transformer cost roughly <span class="chip">$900</span> to train. GPT-3, three years later, ran somewhere between <span class="chip">$500K and $4.6M</span> depending on hardware. GPT-4, by 2023, cost an estimated <span class="chip">$78–100M</span> in compute alone — Sam Altman has confirmed the figure exceeded $100 million — using on the order of 25,000 GPUs running for roughly three months. Google's Gemini Ultra reportedly cost over <span class="chip">$190M</span>. That's not a typo-prone exaggeration; it's three orders of magnitude in under a decade, and it's the single biggest reason frontier AI is currently a game only a handful of organizations can play at all.</p>
+
+    <div class="callout">
+      <span class="callout-label">Worth sitting with</span>
+      <p>A useful way to picture pretraining: it's less like teaching a student a subject and more like a single, vastly patient reader getting through a library larger than any human could read in a hundred lifetimes — not memorizing pages, but absorbing the statistical shape of how ideas, facts, and sentence structures tend to fit together. What comes out the other end can write fluent, plausible-sounding prose on almost anything. What it can't yet do is reliably distinguish "answer the question" from "continue the pattern."</p>
+    </div>
+
+    <div class="meter-head">
+      <div class="meter-num">02</div>
+      <div class="meter-text">
+        <span class="meter-tag">Stage two, with a much smaller bill</span>
+        <h2>Fine-tuning: teaching the shape of a conversation</h2>
+      </div>
+    </div>
+
+    <p><span class="chip">Fine-tuning</span> — more precisely, supervised fine-tuning, or SFT — takes the pretrained model and continues training it on a much smaller, much more carefully curated dataset: real examples of instructions paired with the kind of response a helpful assistant should give. Question, good answer. Request, good response. Thousands to millions of these pairs, instead of the entire internet. This is where a model first learns the basic shape of "you ask, I answer" rather than "continue whatever pattern is in front of me."</p>
+
+    <p>The cost difference between the two stages is enormous, and it matters for understanding who can build what. Pretraining a frontier model from scratch needs the kind of compute only a few labs in the world can afford. Fine-tuning an already-pretrained open model on a specific domain — say, customer support transcripts for a telecom company — can run anywhere from a few hundred to a few thousand dollars using parameter-efficient techniques. That asymmetry is the entire reason a wave of smaller companies can build specialized AI products without ever training a foundation model themselves.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">03</div>
+      <div class="meter-text">
+        <span class="meter-tag">Stage three, the one that's easy to underrate</span>
+        <h2>RLHF: teaching taste, not facts</h2>
+      </div>
+    </div>
+
+    <p>Fine-tuning teaches a model the shape of a good answer. It doesn't teach which of two reasonable-sounding answers a person would actually prefer — and "reasonable-sounding" leaves a lot of room for answers that are rude, evasive, dangerous, or just unhelpfully long-winded. That's the gap <span class="chip">RLHF</span> — reinforcement learning from human feedback — closes.</p>
+
+    <p>The mechanism is three steps. First, the fine-tuned model generates several different responses to the same prompt. Second, human reviewers rank those responses from best to worst — not by checking facts, but by judgment: which one would you actually want to receive. Third, those rankings train a separate <span class="chip">reward model</span> to predict human preference at scale, and that reward model is then used to nudge the original model's weights toward producing more of what scored well and less of what scored poorly, across millions of further examples. The reviewers never have to look at all of those millions; their judgment gets distilled into a model that can apply it tirelessly.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <span class="flow-mark">1</span>
+        <div class="flow-body"><strong>Generate</strong><span>The fine-tuned model produces several candidate answers to the same prompt.</span></div>
+      </div>
+      <div class="flow-step">
+        <span class="flow-mark">2</span>
+        <div class="flow-body"><strong>Rank</strong><span>Human reviewers order the candidates by preference — not correctness, preference.</span></div>
+      </div>
+      <div class="flow-step">
+        <span class="flow-mark">3</span>
+        <div class="flow-body"><strong>Reward model</strong><span>Those rankings train a separate model to predict, at scale, what a human would likely prefer.</span></div>
+      </div>
+      <div class="flow-step">
+        <span class="flow-mark">4</span>
+        <div class="flow-body"><strong>Reinforce</strong><span>The reward model's scores are used to push the original model's weights toward higher-scoring behavior.</span></div>
+      </div>
+    </div>
+
+    <p>RLHF is also, not coincidentally, where most of what people experience as a model's "personality" — cautious here, blunt there, refusing some requests outright — actually gets shaped. None of it was written as a rule the way the phishing filter in Part 1 was. It was trained in, the same way everything else in this pipeline gets trained in: by adjusting weights until the observed behavior matches what was rewarded.</p>
+
+    <div class="oneliner">Pretraining teaches a model language. Fine-tuning teaches it conversation. RLHF teaches it taste.</div>
+
+    <div class="meter-head">
+      <div class="meter-num">04</div>
+      <div class="meter-text">
+        <span class="meter-tag">Two ideas worth being precise about</span>
+        <h2>Tokenizers and context windows — what the model actually sees</h2>
+      </div>
+    </div>
+
+    <p>None of the three training stages above operate on words. They operate on <span class="chip">tokens</span> — and a token is rarely a whole word. A <span class="chip">tokenizer</span> breaks text into chunks using a method called byte-pair encoding: start with individual characters, repeatedly merge whatever pair of characters shows up most often in the training data, and keep merging until you've built a vocabulary of somewhere between 30,000 and 200,000 reusable chunks. Common English words usually end up as a single token. Rare words, unusual names, or anything in a less common script can get chopped into several oddly-sized pieces — which is part of why typing in some languages costs noticeably more per request than typing the same idea in English.</p>
+
+    <p>The <span class="chip">context window</span> is the total number of tokens a model can hold in view at once — your prompt, any system instructions, the conversation so far, and the response it's about to generate, all sharing one fixed budget. This number has grown almost absurdly fast: the original 2017 transformer effectively worked with sequences a few hundred tokens long; by 2026, context windows of a million tokens are standard across frontier models. But a bigger window isn't simply "more memory" in the way more RAM helps a computer. Independent research has repeatedly found that models pay closer attention to information near the start and end of a long context than to material buried in the middle — informally called the "lost in the middle" effect — so stuffing a context window full doesn't guarantee the model actually uses everything in it evenly.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">05</div>
+      <div class="meter-text">
+        <span class="meter-tag">The part nobody quite escapes</span>
+        <h2>Why models hallucinate — and why it isn't a bug being patched out</h2>
+      </div>
+    </div>
+
+    <p>"Hallucination" is the field's term for a model stating something false with total confidence — inventing a court case that doesn't exist, citing a statistic that was never published, describing a feature your software doesn't have. For years the working assumption was that this was a rough edge that better training would eventually sand away. Research from OpenAI published in September 2025 made a more uncomfortable case: hallucination is, in part, a predictable side effect of how these models are trained and graded in the first place.</p>
+
+    <p>The argument runs roughly like this. During training and on most evaluation benchmarks, a confident wrong answer and an honest "I don't know" are scored identically — both wrong, zero credit. A confident guess, on the other hand, has a real chance of being right and earning credit. Run that incentive over millions of training examples and you get a model that's statistically rewarded for guessing fluently rather than admitting uncertainty, in much the same way a student taking a multiple-choice exam with no penalty for guessing should always pick an answer rather than leave it blank. The model isn't "lying" in any sense that implies intent. It's continuing a pattern that looks like a confident, well-formed answer, because confident, well-formed answers are what scored well during training.</p>
+
+    <div class="pull">A model that says "I don't know" has never once been wrong in a way that costs it points — and under most current grading, that's exactly the problem.</div>
+
+    <p>This connects directly to something else worth naming clearly: a model's <span class="chip">knowledge cutoff</span> — the date after which its training data simply stops — is not a setting that can be nudged forward. It's baked into pretraining itself. A model trained on data through a certain month has no way of knowing what happened after that month unless something outside the model — a live web search, a connected database — hands it that information directly. Ask it about something recent without that help, and you've created exactly the conditions where a confident, fluent, wrong answer is most likely to show up.</p>
+
+    <div class="meter-head">
+      <div class="meter-num">06</div>
+      <div class="meter-text">
+        <span class="meter-tag">The story changing fastest in 2026</span>
+        <h2>Why bigger stopped being the obvious move</h2>
+      </div>
+    </div>
+
+    <p>For most of the years following the 2017 transformer paper, the dominant strategy across the field was straightforward: bigger model, more data, more compute, better results, repeat. That pattern — known as a scaling law — held up well enough for long enough that it became something close to an article of faith. It's no longer the whole story, for a reason that's mostly economic rather than scientific: training and running a trillion-parameter model is staggeringly expensive, and most real-world use doesn't need a trillion parameters' worth of capability for every single request.</p>
+
+    <p>Two techniques have reshaped the field in response. The first is <span class="chip">mixture-of-experts</span>, or MoE — an architecture where a model is built from many specialized sub-networks, "experts," but only a handful of them actually activate for any given input. Google's early GLaM research found a 1.2-trillion-parameter MoE model could outperform a dense 175-billion-parameter model while using roughly half the computation per request, because most of those trillion parameters simply stay dormant unless a particular query actually needs them. It's the reason the largest open-weight models released in 2026 are MoE architectures — that scale would be close to unworkable as a fully dense network, where every parameter fires on every request.</p>
+
+    <p>The second is <span class="chip">distillation</span>: training a smaller "student" model to mimic the outputs of a larger "teacher" model, capturing much of the larger model's capability at a fraction of the size and inference cost. This is why a company can often deploy a smaller, cheaper, faster model for routine tasks and reserve the largest frontier model only for the hardest ones — DeepSeek's V3 model, trained for a widely-reported <span class="chip">$5.6M</span>, a small fraction of what comparable Western frontier models cost, became one of 2026's loudest proof points that clever engineering can substitute for raw compute spend.</p>
+
+    <div class="callout">
+      <span class="callout-label">Worth sitting with</span>
+      <p>None of this means scale stopped mattering. The current frontier models — still mostly trillion-parameter-class systems — remain the most capable available. What's changed is that "biggest" and "best choice for this job" have quietly become two different questions, and most production AI systems now route different requests to different-sized models rather than sending everything to the largest one by default.</p>
+    </div>
+
+    <div class="meter-head">
+      <div class="meter-num">07</div>
+      <div class="meter-text">
+        <span class="meter-tag">Where Part 3 picks up</span>
+        <h2>The model is built. Now it has to be told what to do</h2>
+      </div>
+    </div>
+
+    <p>Everything in this part happens before you ever type a single word into a chat box. Pretraining, fine-tuning, and RLHF are all finished, baked into a fixed set of weights, by the time a model ships. What happens after that — the actual back-and-forth, the wording you choose, the difference between a vague request and a precise one — turns out to matter more than most people assume, and it's a real, learnable skill rather than a knack for being polite to a machine. That's Part 3.</p>
+
+  </article>
+
+  <div class="closing">
+    <p>Three stages, three different jobs, three wildly different price tags — and a model you talk to has all three baked into it before it ever sees your first message. None of that pipeline guarantees the model is right. It only guarantees the model sounds like it might be, which is a different thing, and worth remembering every time an answer arrives a little too smoothly.</p>
+
+    <p class="kicker">A model that's never been wrong without sounding confident isn't trustworthy. It's just well trained. Those aren't the same compliment.</p>
+
+    <div class="source-note">Researched for this piece: OpenAI's "Why Language Models Hallucinate" (Kalai et al., September 2025); published training cost estimates for the 2017 Transformer, GPT-3, GPT-4, and Gemini Ultra (Stanford AI Index, Epoch AI); Google's GLaM mixture-of-experts research; DeepSeek V3's reported training cost; current frontier context window sizes; and standard SFT/RLHF pipeline descriptions from Ouyang et al. (2022) and subsequent literature.</div>
+
+    <div class="byline">
+      <div class="name">Ali Asgar Kanchwala</div>
+      15+ years · Network Security · AI Systems & Infrastructure · Abu Dhabi, UAE
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const stages = {
+    1: {
+      tag: 'Input: the entire readable internet',
+      title: 'Predict the next token. That\'s the whole job.',
+      body: `
+        <p>Trained on book archives, filtered web text, and code — hundreds of billions to trillions of tokens. No curated questions and answers. Just: given everything so far, guess what comes next.</p>
+        <div class="stage-sample">Prompt: "The capital of the UAE is"<br>Output: "Abu Dhabi, though Dubai is often mistakenly..."</div>
+        <p>It already "knows" facts statistically. It has no idea yet that you want a direct answer rather than a continuation.</p>
+      `
+    },
+    2: {
+      tag: 'Input: curated instruction/response pairs',
+      title: 'Learn the shape of a conversation',
+      body: `
+        <p>Thousands to millions of examples showing: here is a question, here is what a helpful answer looks like. Far smaller dataset, far smaller cost than pretraining.</p>
+        <div class="stage-sample">Prompt: "What's the capital of the UAE?"<br>Output: "Abu Dhabi is the capital of the United Arab Emirates."</div>
+        <p>Now it answers like an assistant. It still can't tell a good answer from a great one — every response that follows the right shape looks equally acceptable to it.</p>
+      `
+    },
+    3: {
+      tag: 'Input: human preference rankings',
+      title: 'Learn which good answer is actually better',
+      body: `
+        <p>Humans rank multiple model outputs by preference. Those rankings train a reward model, which then reshapes the original model's behavior — favoring what scored well, away from what scored poorly.</p>
+        <div class="stage-sample">Two valid answers ranked by a reviewer:<br>→ Preferred: concise, direct, correctly hedged<br>→ Less preferred: padded, overconfident, evasive</div>
+        <p>This is where tone, caution, and refusals get shaped — not by a written rule, but by what was rewarded across millions of comparisons.</p>
+      `
+    }
+  };
+
+  function showStage(n) {
+    for (let i = 1; i <= 3; i++) {
+      document.getElementById('stage-' + i).classList.toggle('active', i === n);
+    }
+    const s = stages[n];
+    document.getElementById('stage-output').innerHTML = `
+      <span class="stage-output-tag">${s.tag}</span>
+      <h4>${s.title}</h4>
+      ${s.body}
+    `;
+  }
+
+  showStage(1);
+  
+  //script for navigation
+document.addEventListener('DOMContentLoaded', () => {
+  const scrollContainer = document.querySelector('.series-links-scroll');
+  const leftArrow = document.getElementById('nav-arrow-left');
+  const rightArrow = document.getElementById('nav-arrow-right');
+
+  if (!scrollContainer || !leftArrow || !rightArrow) return;
+
+  let scrollInterval;
+  const scrollSpeed = 4; // Higher numbers = faster scroll speed
+
+  function startScrolling(direction) {
+    // Clear any active running frame loops safely
+    clearInterval(scrollInterval);
+    
+    scrollInterval = setInterval(() => {
+      // Temporarily bypass CSS smooth transition for uninterrupted responsive JS loops
+      scrollContainer.style.scrollBehavior = 'auto';
+      
+      if (direction === 'left') {
+        scrollContainer.scrollLeft -= scrollSpeed;
+      } else {
+        scrollContainer.scrollLeft += scrollSpeed;
+      }
+    }, 10); // Loop cadence running smoothly at ~100fps
+  }
+
+  function stopScrolling() {
+    clearInterval(scrollInterval);
+    // Restore clean default CSS swipe mechanics for mobile devices
+    scrollContainer.style.scrollBehavior = 'smooth';
+  }
+
+  // Bind Mouse Hover Listeners to the Left Arrow
+  leftArrow.addEventListener('mouseenter', () => startScrolling('left'));
+  leftArrow.addEventListener('mouseleave', stopScrolling);
+
+  // Bind Mouse Hover Listeners to the Right Arrow
+  rightArrow.addEventListener('mouseenter', () => startScrolling('right'));
+  rightArrow.addEventListener('mouseleave', stopScrolling);
+});  
+</script>
+
+</body>
+</html>
