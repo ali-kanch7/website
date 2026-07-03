@@ -49,6 +49,54 @@ const blogPosts = [
     "readTime": "4 min read"
   },
   {
+    "slug": "../posts/part-6-limits-and-risks",
+    "title": "Where This Actually Goes: Limits, Risks, and the Honest Unknowns — The AI Universe, Part 6",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "21 min read"
+  },
+  {
+    "slug": "../posts/part-5-the-machinery",
+    "title": "The Machinery Underneath: RAG, Memory, Context, and Orchestration — The AI Universe, Part 5",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "20 min read"
+  },
+  {
+    "slug": "../posts/part-4-agents",
+    "title": "From Chatbot to Agent: What \"Agentic AI\" Actually Means — The AI Universe, Part 4",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "21 min read"
+  },
+  {
+    "slug": "../posts/part-3-prompting",
+    "title": "Talking to It Properly: Prompting as a Real Skill — The AI Universe, Part 3",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "17 min read"
+  },
+  {
+    "slug": "../posts/part-2-how-its-built",
+    "title": "How a Model Like This Actually Gets Built — The AI Universe, Part 2",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "21 min read"
+  },
+  {
+    "slug": "../posts/part-1-what-ai-means",
+    "title": "What \"AI\" Actually Means Before It Means Anything Else — The AI Universe, Part 1",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "20 min read"
+  },
+  {
     "slug": "../posts/ot-it-convergence-blog",
     "title": "The Purdue Model Is Lying to You — OT/IT Convergence Security",
     "tag": "Security",
