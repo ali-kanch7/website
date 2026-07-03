@@ -153,6 +153,14 @@ const blogPosts = [
     "readTime": "19 min read"
   },
   {
+    "slug": "../posts/dns-tunneling-blog",
+    "title": "DNS Tunneling and Covert C2 Channels — Why Your Egress Filtering Doesn't See It",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "23 min read"
+  },
+  {
     "slug": "../posts/device-code-phishing-part3",
     "title": "Device Code Phishing, Part 3 — What Actually Works",
     "tag": "Security",
@@ -193,12 +201,28 @@ const blogPosts = [
     "readTime": "17 min read"
   },
   {
+    "slug": "../posts/cloud-complexity-gap-blog",
+    "title": "The Cloud Complexity Gap — Why Spending More Isn't Making You Safer | Ali Asgar Kanchwala",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "27 min read"
+  },
+  {
     "slug": "../posts/claude-mythos-explained",
     "title": "Claude Mythos, 0 to 100 — What It Is, What It Isn't, and Why It Disappeared",
     "tag": "Security",
     "excerpt": "Read the latest article.",
     "date": "July 2026",
     "readTime": "19 min read"
+  },
+  {
+    "slug": "../posts/bgp-hijacking-blog",
+    "title": "BGP Hijacking and the Internet's Honor System",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "25 min read"
   },
   {
     "slug": "../posts/beyond-the-api-securing-netconf-and-restconf-interfaces-on-legacy-hardware",
