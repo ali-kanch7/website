@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DNS Tunneling and Covert C2 Channels — Why Your Egress Filtering Doesn't See It</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+<style>
+:root {
+  --bg:           #0d0f0b;
+  --bg-card:      #131a10;
+  --bg-raise:     #1e2b19;
+  --accent:       #7fff6b;
+  --accent-dim:   #3a6a30;
+  --accent2:      #ff6b35;
+  --danger:       #ef4444;
+  --text:         #c8dbb8;
+  --text-bright:  #e8f5e0;
+  --text-dim:     #6a8060;
+  --border:       #253020;
+  --mono:         'JetBrains Mono', monospace;
+  --body:         'Inter', sans-serif;
+  --display:      'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+#progress {
+  position: fixed; top: 0; left: 0;
+  height: 2px; width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  z-index: 999;
+  transition: width 0.1s linear;
+}
+
+/* ── NAV ── */
+nav {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(13,15,11,0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 52px;
+}
+.nav-brand {
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.nav-right {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  align-items: stretch;
+}
+
+.hero-left {
+  padding: 80px 56px 80px 64px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-right: 1px solid var(--border);
+}
+
+.hero-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent2);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hero-tag::before {
+  content: '';
+  display: inline-block;
+  width: 20px;
+  height: 1px;
+  background: var(--accent2);
+}
+
+.hero-title {
+  font-family: var(--display);
+  font-size: clamp(28px, 3.5vw, 44px);
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--text-bright);
+  margin-bottom: 28px;
+  letter-spacing: -0.02em;
+}
+
+.hero-title .hl {
+  color: var(--accent);
+}
+
+.hero-sub {
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--text);
+  max-width: 480px;
+  margin-bottom: 44px;
+}
+
+.hero-meta {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+.hero-meta-item {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.hero-meta-item span {
+  display: block;
+  color: var(--accent);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: none;
+  margin-top: 2px;
+}
+
+/* ── HERO RIGHT: DNS LOG TERMINAL ── */
+.hero-right {
+  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.terminal-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.t-dot { width: 10px; height: 10px; border-radius: 50%; }
+.t-dot.red { background: #ef4444; }
+.t-dot.amber { background: #f59e0b; }
+.t-dot.green { background: var(--accent); }
+.terminal-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-left: 6px;
+}
+
+.terminal-body {
+  flex: 1;
+  overflow: hidden;
+  padding: 16px 0;
+  position: relative;
+}
+
+.log-stream {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.log-row {
+  display: grid;
+  grid-template-columns: 80px 110px 60px 1fr;
+  gap: 0 8px;
+  padding: 2px 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  color: var(--text-dim);
+}
+.log-row .ts { color: var(--text-dim); opacity: 0.7; }
+.log-row .src { color: #7aad6e; }
+.log-row .type { color: var(--text-dim); }
+.log-row .query { color: var(--text); overflow: hidden; text-overflow: ellipsis; }
+
+.log-row.malicious {
+  background: rgba(255, 107, 53, 0.08);
+  border-left: 2px solid var(--accent2);
+  padding-left: 18px;
+  color: var(--accent2);
+  position: relative;
+}
+.log-row.malicious .ts { color: var(--accent2); opacity: 0.8; }
+.log-row.malicious .src { color: var(--accent2); }
+.log-row.malicious .type { color: var(--accent2); }
+.log-row.malicious .query { color: var(--accent2); font-weight: 600; }
+
+.log-row.flagged {
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 2px solid var(--danger);
+  padding-left: 18px;
+  animation: flagPulse 1.4s ease-in-out infinite;
+}
+.log-row.flagged .ts,
+.log-row.flagged .src,
+.log-row.flagged .type,
+.log-row.flagged .query { color: var(--danger); }
+
+@keyframes flagPulse {
+  0%, 100% { background: rgba(239,68,68,0.1); }
+  50%       { background: rgba(239,68,68,0.18); }
+}
+
+.terminal-overlay-top {
+  position: absolute; top: 0; left: 0; right: 0; height: 48px;
+  background: linear-gradient(to bottom, var(--bg-card), transparent);
+  pointer-events: none; z-index: 2;
+}
+.terminal-overlay-bottom {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 80px;
+  background: linear-gradient(to top, var(--bg-card), transparent);
+  pointer-events: none; z-index: 2;
+}
+
+.terminal-flag-label {
+  position: absolute;
+  bottom: 24px;
+  right: 20px;
+  z-index: 3;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--danger);
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.3);
+  padding: 5px 10px;
+  border-radius: 2px;
+}
+
+/* ── MAIN CONTENT ── */
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 80px 32px;
+}
+
+h2 {
+  font-family: var(--display);
+  font-size: clamp(20px, 2.5vw, 26px);
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: -0.02em;
+  margin: 72px 0 24px;
+  line-height: 1.2;
+}
+
+h3 {
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.01em;
+  margin: 44px 0 16px;
+}
+
+p {
+  margin-bottom: 20px;
+  font-size: 15.5px;
+  line-height: 1.72;
+}
+
+p:last-child { margin-bottom: 0; }
+
+strong { color: var(--text-bright); font-weight: 600; }
+
+code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 2px;
+  color: var(--accent);
+}
+
+/* ── DIAGRAM WRAP ── */
+.diagram-wrap {
+  margin: 48px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.dw-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--border);
+}
+.dw-dot { width: 8px; height: 8px; border-radius: 50%; }
+.dw-dot.r { background: #ef4444; }
+.dw-dot.a { background: #f59e0b; }
+.dw-dot.g { background: var(--accent); }
+.dw-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-left: 6px;
+  flex: 1;
+}
+.dw-body {
+  padding: 28px 20px;
+  overflow-x: auto;
+}
+.dw-body .mermaid {
+  display: flex;
+  justify-content: center;
+}
+
+/* ── CALLOUTS ── */
+.callout {
+  margin: 36px 0;
+  padding: 20px 22px;
+  border-left: 3px solid;
+  background: var(--bg-card);
+  border-radius: 0 2px 2px 0;
+}
+.callout-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+.callout p {
+  margin-bottom: 0;
+  font-size: 15px;
+  line-height: 1.65;
+}
+.callout.info { border-color: var(--accent-dim); }
+.callout.info .callout-label { color: var(--accent); }
+.callout.warn { border-color: #b45309; }
+.callout.warn .callout-label { color: #f59e0b; }
+.callout.danger {
+  border-color: var(--danger);
+  background: rgba(239,68,68,0.06);
+}
+.callout.danger .callout-label { color: var(--danger); }
+
+/* ── PULL QUOTE ── */
+.pull {
+  margin: 52px 0;
+  padding: 0 0 0 28px;
+  border-left: 3px solid var(--accent);
+}
+.pull p {
+  font-family: var(--display);
+  font-size: clamp(18px, 2vw, 22px);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-bright);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+/* ── NUMBERED IMPL LIST ── */
+.impl-list { margin: 36px 0; display: flex; flex-direction: column; gap: 12px; }
+.impl-item {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.impl-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--bg-raise);
+  border-right: 1px solid var(--border);
+}
+.impl-body {
+  padding: 16px 20px;
+}
+.impl-body strong {
+  display: block;
+  font-size: 14.5px;
+  margin-bottom: 5px;
+}
+.impl-body p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+/* ── COMPARISON TABLE ── */
+.compare-wrap { margin: 40px 0; overflow-x: auto; }
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+.compare-table th {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 12px 16px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.compare-table th.bad { color: var(--accent2); }
+.compare-table th.good { color: var(--accent); }
+.compare-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.5;
+  color: var(--text);
+  vertical-align: top;
+}
+.compare-table tr:last-child td { border-bottom: none; }
+.compare-table td.bad { color: var(--accent2); }
+.compare-table td.good { color: var(--accent); }
+
+/* ── VENDOR GRID ── */
+.vendor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+  margin: 32px 0;
+}
+.vendor-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 16px 18px;
+  transition: border-color 0.2s, transform 0.15s;
+  cursor: default;
+}
+.vendor-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.vendor-card .vc-name {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin-bottom: 5px;
+}
+.vendor-card .vc-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* ── CLOSING ── */
+.closing {
+  margin-top: 80px;
+  padding-top: 48px;
+  border-top: 1px solid var(--border);
+}
+.closing-body {
+  font-size: 15.5px;
+  line-height: 1.72;
+}
+.kicker {
+  margin-top: 48px;
+  font-family: var(--display);
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-bright);
+  letter-spacing: -0.02em;
+}
+.kicker .k-accent { color: var(--accent); }
+.author-card {
+  margin-top: 48px;
+  padding: 18px 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.author-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--bg-raise);
+  border: 1px solid var(--accent-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.author-name {
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-bright);
+  letter-spacing: -0.01em;
+}
+.author-role {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 3px;
+  letter-spacing: 0.02em;
+}
+
+/* ── ENTROPY WIDGET ── */
+.entropy-widget {
+  margin: 44px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.entropy-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--border);
+}
+.entropy-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  flex: 1;
+  margin-left: 6px;
+}
+.entropy-body {
+  padding: 24px 24px;
+}
+.eq-row {
+  display: grid;
+  grid-template-columns: 260px 1fr 60px;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+.eq-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.eq-bar-track {
+  height: 8px;
+  background: var(--bg-raise);
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+}
+.eq-bar {
+  height: 100%;
+  border-radius: 1px;
+  transition: width 1s ease;
+}
+.eq-bar.normal { background: var(--accent-dim); }
+.eq-bar.suspicious { background: var(--accent2); }
+.eq-bar.malicious { background: var(--danger); }
+.eq-value {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-align: right;
+}
+.eq-value.normal { color: var(--text-dim); }
+.eq-value.suspicious { color: var(--accent2); }
+.eq-value.malicious { color: var(--danger); }
+.entropy-legend {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.el-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+.el-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 920px) {
+  .hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+  .hero-left {
+    padding: 64px 32px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-right {
+    height: 480px;
+  }
+  .eq-row {
+    grid-template-columns: 180px 1fr 50px;
+  }
+}
+
+@media (max-width: 640px) {
+  nav { padding: 0 20px; }
+  .hero-left { padding: 48px 20px; }
+  .container { padding: 56px 20px; }
+  .hero-right { height: 380px; }
+  .impl-item { grid-template-columns: 44px 1fr; }
+  .eq-row { grid-template-columns: 1fr; gap: 6px; }
+  .eq-bar-track { display: none; }
+  .kicker { font-size: 22px; }
+}
+
+/* ── REDUCED MOTION ── */
+@media (prefers-reduced-motion: reduce) {
+  .log-row.flagged { animation: none; background: rgba(239,68,68,0.12); }
+  .log-stream { animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<nav>
+  <div class="nav-brand">// network-security</div>
+  <div class="nav-right">DNS · Threat Detection · Covert Channels</div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-tag">Deep Dive · Protocol Security</div>
+    <h1 class="hero-title">
+      <span class="hl">DNS Tunneling</span> and Covert C2 Channels —<br>
+      Why Your Egress Filtering Doesn't See It
+    </h1>
+    <p class="hero-sub">
+      You blocked TCP 80 and 443. You enforce HTTPS inspection. Your firewall ACLs deny direct internet access from the server VLAN. None of it matters if you're not inspecting DNS — and almost nobody is.
+    </p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">Category<span>Threat Detection</span></div>
+      <div class="hero-meta-item">Protocol<span>DNS / UDP 53</span></div>
+      <div class="hero-meta-item">Threat Type<span>Covert C2 · Exfiltration</span></div>
+      <div class="hero-meta-item">Depth<span>Practitioner</span></div>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="terminal-bar">
+      <div class="t-dot red"></div>
+      <div class="t-dot amber"></div>
+      <div class="t-dot green"></div>
+      <div class="terminal-title">DNS query log — resolver-01.internal &nbsp;[live]</div>
+    </div>
+    <div class="terminal-body">
+      <div class="terminal-overlay-top"></div>
+      <div class="log-stream" id="logStream"></div>
+      <div class="terminal-overlay-bottom"></div>
+      <div class="terminal-flag-label" id="flagLabel" style="display:none">⚠ ANOMALY DETECTED</div>
+    </div>
+  </div>
+</section>
+
+<!-- MAIN CONTENT -->
+<main class="container">
+
+  <p>Port 53 is the one port your firewall almost certainly permits outbound — unconditionally, from every host, to any destination. It has to be. DNS is the directory service everything else depends on. Break DNS and you break every application that can't remember an IP address, which is all of them.</p>
+
+  <p>Attackers knew this fifteen years ago. Tools like <strong>dnscat2</strong>, <strong>iodine</strong>, and <strong>dns2tcp</strong> have been publicly available for well over a decade. Commodity malware families — including parts of <strong>SUNBURST</strong>'s C2 logic, <strong>FrameworkPOS</strong>, and banking trojans like <strong>Pony</strong> — have all used DNS as a covert channel. Yet auditors still mark "port 53 outbound permitted" as acceptable without requiring any inspection behind it. That gap between policy and implementation is exactly where the channel lives.</p>
+
+  <div class="callout danger">
+    <div class="callout-label">⚠ Critical premise</div>
+    <p>DNS tunneling doesn't exploit a vulnerability in DNS. It exploits the fact that DNS is trusted categorically — allowed through firewalls, not inspected by DLP, invisible to most SIEM correlation rules — while simultaneously carrying arbitrary data in every query and response. The protocol is the vulnerability.</p>
+  </div>
+
+  <h2>What DNS tunneling actually looks like on the wire</h2>
+
+  <p>The mechanics are straightforward once you see them once. An attacker controls a domain — say, <code>evil.example</code> — and runs an authoritative DNS server for it. The malware on the compromised host encodes data (commands, exfiltrated files, credentials) into DNS query subdomains: <code>QlpoOTFAWSZTWYzF.c2session.evil.example</code>. Your internal recursive resolver dutifully forwards that query upstream, through your firewall, to the attacker's authoritative server. The attacker reads the base32-encoded payload from the subdomain, processes it, and returns the response (commands, file chunks, config) encoded into TXT or NULL DNS record responses. Your recursive resolver hands it back to the infected host. Nothing crossed your firewall on any port except 53. Nothing in your proxy logs. Nothing in your SSL inspection output.</p>
+
+  <p>The throughput is miserable by modern standards — somewhere between 1–30 KB/s depending on the implementation, TTL values, and query volume. That's irrelevant for a C2 channel. You don't need bandwidth to receive commands or exfiltrate a 200KB credential file over 48 hours. <strong>Patience is the attacker's tool, not speed.</strong></p>
+
+  <div class="diagram-wrap">
+    <div class="dw-bar">
+      <div class="dw-dot r"></div><div class="dw-dot a"></div><div class="dw-dot g"></div>
+      <div class="dw-title">Figure 01 — DNS Tunneling Data Flow (full chain)</div>
+    </div>
+    <div class="dw-body">
+      <div class="mermaid">
+flowchart LR
+  subgraph Internal["Internal Network"]
+    H["Infected Host\n(malware running)"]
+    R["Internal\nRecursive Resolver"]
+  end
+  subgraph DMZ["Perimeter / Firewall"]
+    FW["Firewall\n(permits UDP 53\nno inspection)"]
+  end
+  subgraph Internet["Internet"]
+    Root["Root / TLD\nNameservers"]
+    Attacker["Attacker's\nAuthoritative NS\nevil.example"]
+  end
+
+  H -->|"1. Query: QlpoOTF.c2session.evil.example\n(payload encoded in subdomain)"| R
+  R -->|"2. Recursive lookup\nforwarded upstream"| FW
+  FW -->|"3. Exits on UDP 53\nNo alert. No log."| Root
+  Root -->|"4. Delegates to\nevil.example NS"| Attacker
+  Attacker -->|"5. Reads payload from subdomain\nReturns command in TXT record"| R
+  R -->|"6. Response delivered\nto infected host"| H
+      </div>
+    </div>
+  </div>
+
+  <p>The important thing about this diagram is what's <em>not</em> in it: any control plane that your security stack touches. Your NGFW never sees the application data. Your DLP never sees the content. Your proxy logs show nothing because DNS bypasses the proxy entirely. The only system that sees all of this traffic is your recursive resolver — and in most environments, its logs aren't going anywhere useful.</p>
+
+  <h2>Why traditional egress controls don't catch it</h2>
+
+  <p>Most egress security is built around the assumption that malicious traffic looks different from legitimate traffic at the protocol or port layer. DNS tunneling breaks that assumption by design. A few reasons this keeps working in practice:</p>
+
+  <h3>Implicit trust in UDP 53</h3>
+  <p>Firewall rules permitting outbound DNS are almost universally written as "any source, any destination, permit UDP 53." The rationale is operational: restricting which hosts can query DNS requires maintaining a permit list, and legitimate software resolves DNS constantly. The rule was written once and has never been revisited. The same rule that lets your workstations resolve Google is letting your infected server talk to an attacker's nameserver in Eastern Europe.</p>
+
+  <p>Tightening this to "permit outbound DNS only to our recursive resolvers" (which then have controlled upstream forwarders) is the right answer. Most environments haven't done it. In OT environments I've worked in, it's nearly universal that DNS is wide open — because the SCADA historian needs to resolve the vendor's update server, and nobody wants to build a split resolver architecture for it.</p>
+
+  <h3>Recursive resolvers as unwitting relays</h3>
+  <p>Here's the part that makes network-layer filtering insufficient on its own: if every host queries your internal recursive resolver, and your resolver makes upstream queries on their behalf, then restricting which hosts can send DNS outbound doesn't stop tunneling. It just moves the channel. The resolver becomes the tunnel endpoint. Traffic from <em>inside</em> your network reaches the attacker's nameserver through a system you trust implicitly. Your SIEM has no rule for "resolver made 3,000 queries to evil.example in four hours" because nobody wrote one.</p>
+
+  <h3>Protocol legitimacy</h3>
+  <p>DNS traffic to a previously unseen domain is not an alert condition in most environments — it would fire constantly. Your workstations query thousands of new domains daily from browser activity alone. The attacker's domain looks structurally identical to a CDN edge hostname, an ad-tech endpoint, or a SaaS health check URL: an unfamiliar subdomain of an unfamiliar apex domain, queried once or twice and then never again. The base32 encoding in the subdomain is the only tell, and no firewall ACL catches that.</p>
+
+  <div class="callout warn">
+    <div class="callout-label">⚑ Operational reality</div>
+    <p>I've reviewed environments where the firewall rule permitting outbound DNS was over six years old, written for an infrastructure that no longer existed, and audited as "compliant" because UDP 53 was listed in the egress policy documentation. The policy was correct. The inspection was absent. These are different things.</p>
+  </div>
+
+  <h2>The signals that actually exist — if you're looking</h2>
+
+  <p>DNS tunneling isn't invisible. It's just invisible to the controls most teams are actually running. The signals exist in the DNS logs themselves, and they're consistent across tooling implementations because they emerge from the physics of encoding arbitrary data into domain name labels.</p>
+
+  <div class="entropy-widget">
+    <div class="entropy-header">
+      <div class="dw-dot r"></div><div class="dw-dot a"></div><div class="dw-dot g"></div>
+      <div class="entropy-title">Figure 02 — Shannon entropy comparison: legitimate vs. tunneled subdomains</div>
+    </div>
+    <div class="entropy-body">
+      <div class="eq-row">
+        <div class="eq-label">google.com</div>
+        <div class="eq-bar-track"><div class="eq-bar normal" style="width:20%"></div></div>
+        <div class="eq-value normal">1.58</div>
+      </div>
+      <div class="eq-row">
+        <div class="eq-label">mail.corp.internal</div>
+        <div class="eq-bar-track"><div class="eq-bar normal" style="width:30%"></div></div>
+        <div class="eq-value normal">2.47</div>
+      </div>
+      <div class="eq-row">
+        <div class="eq-label">cdn-a2394.cloudfront.net</div>
+        <div class="eq-bar-track"><div class="eq-bar normal" style="width:42%"></div></div>
+        <div class="eq-value normal">3.41</div>
+      </div>
+      <div class="eq-row">
+        <div class="eq-label">api-v3-xr8d2.saas-vendor.com</div>
+        <div class="eq-bar-track"><div class="eq-bar suspicious" style="width:54%"></div></div>
+        <div class="eq-value suspicious">4.32 ⚑</div>
+      </div>
+      <div class="eq-row">
+        <div class="eq-label">QlpoOTFAWSZTWY.c2host.evil.example</div>
+        <div class="eq-bar-track"><div class="eq-bar malicious" style="width:88%"></div></div>
+        <div class="eq-value malicious">4.89 ⚠</div>
+      </div>
+      <div class="eq-row">
+        <div class="eq-label">AAABBBCCCDDDEEE111222333.exfil.baddomain.io</div>
+        <div class="eq-bar-track"><div class="eq-bar malicious" style="width:95%"></div></div>
+        <div class="eq-value malicious">4.97 ⚠</div>
+      </div>
+      <div class="entropy-legend">
+        <div class="el-item"><div class="el-dot" style="background:var(--accent-dim)"></div>Normal (&lt; 3.5)</div>
+        <div class="el-item"><div class="el-dot" style="background:var(--accent2)"></div>Suspicious (3.5–4.5)</div>
+        <div class="el-item"><div class="el-dot" style="background:var(--danger)"></div>Likely encoded payload (&gt; 4.5)</div>
+      </div>
+    </div>
+  </div>
+
+  <p>The three primary detection signals, in order of reliability:</p>
+
+  <p><strong>Query subdomain entropy.</strong> Legitimate hostnames are human-readable or follow predictable CDN/SaaS patterns. Base32 and base64-encoded payloads have Shannon entropy consistently above 4.5 bits per character — higher than almost any legitimate hostname. This is the single most reliable per-query signal. Tools like <strong>Zeek</strong> with the dns-tunneling package or <strong>PassiveDNS</strong> coupled with a Python entropy script can flag this in real time. Infoblox BloxOne Threat Defense and Cisco Umbrella do this natively.</p>
+
+  <p><strong>Query volume and frequency patterns.</strong> A single host querying the same parent domain 200 times in an hour is unusual. Normal application behavior produces burst-then-silence patterns. DNS tunneling produces either steady-state polling (the malware checking in every 30 seconds) or rapid sequential queries (bulk data transfer). NXDOMAIN ratio spikes — many queries to subdomains that don't resolve — often appear during initial beaconing as the malware tests channel availability.</p>
+
+  <p><strong>Response record type and size.</strong> Legitimate DNS queries produce A or AAAA records, maybe CNAME chains. DNS tunneling responses almost always use TXT, NULL, or CNAME records to carry return payloads, and those responses are consistently larger than legitimate answers for the same record types. A TXT record returning 512 bytes for a domain you've never heard of should be examined. Most legitimate TXT records are SPF or DMARC entries, and those come from domains you already know.</p>
+
+  <div class="diagram-wrap">
+    <div class="dw-bar">
+      <div class="dw-dot r"></div><div class="dw-dot a"></div><div class="dw-dot g"></div>
+      <div class="dw-title">Figure 03 — Detection signal quadrant: query entropy vs. query volume</div>
+    </div>
+    <div class="dw-body">
+      <div class="mermaid">
+quadrantChart
+  title DNS Anomaly Detection Quadrant
+  x-axis Low Query Volume --> High Query Volume
+  y-axis Low Subdomain Entropy --> High Subdomain Entropy
+  quadrant-1 Suspicious — Investigate
+  quadrant-2 Critical — Likely Tunnel
+  quadrant-3 Normal Traffic
+  quadrant-4 Possible DGA / Beacon
+  Legitimate CDN: [0.25, 0.30]
+  SaaS Healthcheck: [0.45, 0.25]
+  API Platform: [0.60, 0.38]
+  DGA Malware: [0.70, 0.72]
+  DNS C2 Tunnel: [0.55, 0.88]
+  Bulk Exfiltration: [0.85, 0.92]
+  Slow Beacon: [0.30, 0.80]
+      </div>
+    </div>
+  </div>
+
+  <div class="pull">
+    <p>Your recursive resolver saw every packet in this attack. It logged none of them in a format your SIEM could use. That's not a gap in the attacker's tradecraft — it's a gap in your detection architecture.</p>
+  </div>
+
+  <h2>Response Policy Zones: the underused control plane</h2>
+
+  <p>RPZ — Response Policy Zones — is a DNS firewall capability that most organizations running BIND, Infoblox, or BlueCat either haven't configured or have configured only for basic malware domain blocking from a threat feed. The capability goes substantially further.</p>
+
+  <p>An RPZ policy can match on: the queried domain (QNAME trigger), the response IP (IP trigger), the nameserver responsible for the domain (NSIP trigger), or the authoritative server IP (NSDNAME trigger). For DNS tunneling detection, the QNAME trigger paired with entropy-based blocking is the most direct control: block or redirect queries to domains whose QNAME entropy exceeds your threshold and that don't appear in your allow-list of known-good high-entropy domains (CDN providers, SaaS platforms, etc.).</p>
+
+  <p>This is not zero false positives. Some legitimately entropy-rich domains exist — AWS S3 bucket URLs, Akamai edge node hostnames, base64-named IoT device identifiers. Building the allow-list takes a few weeks of baselining against your actual traffic, and you should do it before enforcing rather than monitoring. But this is the same process as building application control rules on an NGFW — uncomfortable upfront, essential long-term.</p>
+
+  <div class="compare-wrap">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Control approach</th>
+          <th class="bad">What it misses</th>
+          <th class="good">What it catches</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Block known malicious domains (threat feed only)</td>
+          <td class="bad">Any newly registered domain, private C2 infrastructure, fast-flux domains</td>
+          <td class="good">Known-bad IOCs, botnet C2 with established reputation</td>
+        </tr>
+        <tr>
+          <td>High-entropy QNAME blocking via RPZ</td>
+          <td class="bad">Low-entropy covert channels using dictionary subdomains</td>
+          <td class="good">Base32/64-encoded payload subdomains, most off-the-shelf tunnel tools</td>
+        </tr>
+        <tr>
+          <td>NXDOMAIN ratio alerting</td>
+          <td class="bad">Established sessions where subdomain rotations hit valid entries</td>
+          <td class="good">Beaconing phase, subdomain enumeration, early-stage tunnel setup</td>
+        </tr>
+        <tr>
+          <td>Query volume anomaly per domain</td>
+          <td class="bad">Slow, patient exfiltration (1 query/minute)</td>
+          <td class="good">High-throughput tunneling, rapid C2 polling patterns</td>
+        </tr>
+        <tr>
+          <td>Internal-only recursive resolution + no direct UDP 53 egress</td>
+          <td class="bad">Nothing on its own — resolver still relays</td>
+          <td class="good">Eliminates direct host-to-attacker DNS, centralizes inspection point</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The only approach that provides meaningful detection coverage is layered: restrict direct UDP 53 egress from hosts so all DNS flows through controlled resolvers, instrument those resolvers to log every query, feed those logs to your SIEM or a dedicated DNS security platform, and enforce RPZ policy with entropy-based rules. No single layer covers the space.</p>
+
+  <h2>What a real DNS security stack looks like</h2>
+
+  <p>The tooling landscape here has matured significantly. These are the platforms worth evaluating, depending on where you sit on the enterprise vs. cost-sensitive spectrum:</p>
+
+  <div class="vendor-grid">
+    <div class="vendor-card">
+      <div class="vc-name">Cisco Umbrella</div>
+      <div class="vc-desc">Cloud-delivered DNS resolving + security layer. Strong tunneling detection, threat intelligence integration. DNS-layer security without on-prem resolver changes.</div>
+    </div>
+    <div class="vendor-card">
+      <div class="vc-name">Infoblox BloxOne</div>
+      <div class="vc-desc">On-prem + hybrid DDI with DNS firewall and threat intel. RPZ native support, NXDOMAIN analytics, entropy scoring. Strong in regulated industries.</div>
+    </div>
+    <div class="vendor-card">
+      <div class="vc-name">BlueCat DNS Edge</div>
+      <div class="vc-desc">Enterprise DDI with analytics overlay. Good for environments already running BlueCat IPAM who want detection without adding another vendor.</div>
+    </div>
+    <div class="vendor-card">
+      <div class="vc-name">Zeek (Bro)</div>
+      <div class="vc-desc">Open-source network monitoring. The dns-tunneling package and custom scripts give you entropy analysis on span/tap traffic. Requires engineering investment.</div>
+    </div>
+    <div class="vendor-card">
+      <div class="vc-name">Palo Alto DNS Security</div>
+      <div class="vc-desc">ML-based DNS threat detection integrated into the NGFW. Catches tunneling via predictive analytics rather than static signature matching. Requires PAN-OS 9.0+.</div>
+    </div>
+    <div class="vendor-card">
+      <div class="vc-name">Akamai ETP</div>
+      <div class="vc-desc">Enterprise threat protector with DNS-layer analysis. Good integration path for orgs already using Akamai for CDN/delivery, extending security into the resolver layer.</div>
+    </div>
+  </div>
+
+  <h2>Implementation: what to actually do, in order</h2>
+
+  <div class="impl-list">
+    <div class="impl-item">
+      <div class="impl-num">01</div>
+      <div class="impl-body">
+        <strong>Audit your firewall rules for UDP 53 right now</strong>
+        <p>Identify every ACE permitting outbound UDP/TCP 53. Any rule that permits it from end-user hosts or servers directly to any external destination (rather than to your recursive resolvers) needs to change. This is your first control: funnel all DNS through a point you can inspect.</p>
+      </div>
+    </div>
+    <div class="impl-item">
+      <div class="impl-num">02</div>
+      <div class="impl-body">
+        <strong>Enable full query logging on your recursive resolvers</strong>
+        <p>BIND's <code>querylog</code> directive, Windows DNS debug logging, Infoblox's query log export — wherever your DNS lives, turn on per-query logging. This generates volume, so send it directly to your SIEM or a log aggregator with retention. You cannot detect what you cannot see.</p>
+      </div>
+    </div>
+    <div class="impl-item">
+      <div class="impl-num">03</div>
+      <div class="impl-body">
+        <strong>Build baseline SIEM correlation rules for DNS</strong>
+        <p>Start with three rules: (a) single host >100 queries to a single external domain in one hour, (b) NXDOMAIN responses >20% of queries from a host in 15 minutes, (c) TXT record responses >256 bytes from domains with no prior query history. Tune thresholds against your baseline for two weeks before alarming.</p>
+      </div>
+    </div>
+    <div class="impl-item">
+      <div class="impl-num">04</div>
+      <div class="impl-num" style="display:none"></div>
+      <div class="impl-body">
+        <strong>Deploy entropy-based RPZ policy in monitor mode first</strong>
+        <p>Configure your resolver's RPZ with a QNAME entropy trigger (threshold ~4.3 bits/char) in passthru-log mode before blocking. Run it for 30 days. Review everything it would have blocked. Build your allow-list. Then switch to enforce mode. Skipping the baselining phase is how you break legitimate SaaS integrations on a Friday afternoon.</p>
+      </div>
+    </div>
+    <div class="impl-item">
+      <div class="impl-num">05</div>
+      <div class="impl-body">
+        <strong>Address OT and segmented zones explicitly</strong>
+        <p>Your OT floor has DNS requirements that don't fit the standard resolution model. Build a dedicated internal forwarder for OT zones, with no direct external resolution allowed. If a Modbus gateway or historian needs to resolve an external vendor address, that should go through an approved exception process — not through the same unmonitored resolver your Level 0 PLCs use.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-label">ℹ Regional note</div>
+    <p>NCA Essential Cybersecurity Controls (ECC-1:2018) and NESA information assurance standards both require network traffic monitoring and anomaly detection. Neither explicitly calls out DNS-layer inspection by name, but the requirement for monitoring "all network traffic for malicious activity" logically includes the one protocol most organizations exclude from inspection by default. If you're in a regulated sector in the UAE, this is the gap an informed auditor will eventually find.</p>
+  </div>
+
+  <!-- CLOSING -->
+  <div class="closing">
+    <div class="closing-body">
+      <p>DNS tunneling is not a sophisticated attack in the way INDUSTROYER2 is sophisticated — it doesn't require ICS-specific knowledge, doesn't demand physical access, and doesn't rely on a zero-day. It relies on the assumption that because DNS is infrastructure, it isn't threat surface. That assumption is twenty years old and has never been valid.</p>
+      <p>The tools to detect it exist. The protocol signals are consistent and readable. The only thing missing in most environments is the decision to point a logging pipeline at the resolver and actually look at what's passing through it. Port 53 isn't a firewall bypass. It's an open door that everyone agreed to leave open and then stopped thinking about.</p>
+    </div>
+
+    <div class="kicker">
+      You know every application that crosses your proxy.<br>
+      <span class="k-accent">Do you know every domain your resolvers answered for last Tuesday?</span>
+    </div>
+
+    <div class="author-card">
+      <div class="author-avatar">AK</div>
+      <div>
+        <div class="author-name">Ali Asgar Kanchwala</div>
+        <div class="author-role">15+ years · DNS Security · Network Threat Detection · OT/IT Security · Abu Dhabi, UAE</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- SCRIPTS -->
+<script>
+// Reading progress bar
+window.addEventListener('scroll', () => {
+  const d = document.documentElement;
+  document.getElementById('progress').style.width =
+    (d.scrollTop / (d.scrollHeight - d.clientHeight) * 100) + '%';
+});
+
+// DNS log stream animation
+const normalQueries = [
+  ['14:22:01', '10.10.1.44',  'A',    'google.com'],
+  ['14:22:01', '10.10.2.11',  'A',    'api.office.com'],
+  ['14:22:02', '10.10.1.44',  'AAAA', 'fonts.googleapis.com'],
+  ['14:22:02', '10.10.3.78',  'A',    'update.microsoft.com'],
+  ['14:22:03', '10.10.1.102', 'A',    'cdn.jsdelivr.net'],
+  ['14:22:03', '10.10.2.55',  'A',    'ocsp.digicert.com'],
+  ['14:22:04', '10.10.1.44',  'A',    'teams.microsoft.com'],
+  ['14:22:04', '10.10.4.12',  'A',    'login.microsoftonline.com'],
+  ['14:22:05', '10.10.1.102', 'A',    'slack.com'],
+  ['14:22:05', '10.10.3.78',  'A',    'prod.api.saas-vendor.io'],
+  ['14:22:06', '10.10.2.11',  'A',    'smtp.sendgrid.net'],
+  ['14:22:06', '10.10.1.44',  'A',    'azure.microsoft.com'],
+  ['14:22:07', '10.10.4.12',  'A',    'www.google.com'],
+  ['14:22:07', '10.10.2.55',  'A',    'storage.googleapis.com'],
+  ['14:22:08', '10.10.1.102', 'A',    'cloudflare.com'],
+  ['14:22:08', '10.10.3.78',  'A',    'auth.okta.com'],
+  ['14:22:09', '10.10.1.44',  'A',    'api.github.com'],
+  ['14:22:09', '10.10.2.11',  'AAAA', 's3.amazonaws.com'],
+  ['14:22:10', '10.10.4.12',  'A',    'login.salesforce.com'],
+  ['14:22:10', '10.10.1.102', 'A',    'ping.chartbeat.net'],
+];
+
+const maliciousQuery = ['14:22:11', '10.10.3.12', 'TXT', 'QlpoOTFAWSZTWYzFk8wA.c2session.badactor.io'];
+
+const stream = document.getElementById('logStream');
+const flagLabel = document.getElementById('flagLabel');
+let visibleRows = [];
+let queryIndex = 0;
+let maliciousInserted = false;
+let cycleCount = 0;
+
+function createRow(data, type) {
+  const row = document.createElement('div');
+  row.className = 'log-row' + (type === 'malicious' ? ' flagged' : '');
+  row.innerHTML = `<span class="ts">${data[0]}</span><span class="src">${data[1]}</span><span class="type">${data[2]}</span><span class="query">${data[3]}</span>`;
+  return row;
+}
+
+function addRow() {
+  // Every 8 normal rows, insert the malicious one
+  if (queryIndex > 0 && queryIndex % 8 === 0 && !maliciousInserted) {
+    const mRow = createRow(maliciousQuery, 'malicious');
+    stream.appendChild(mRow);
+    visibleRows.push(mRow);
+    maliciousInserted = true;
+    flagLabel.style.display = 'block';
+    setTimeout(() => {
+      flagLabel.style.display = 'none';
+      maliciousInserted = false;
+    }, 3000);
+  } else {
+    const data = normalQueries[queryIndex % normalQueries.length];
+    // Tick the timestamp slightly
+    const seconds = 12 + (queryIndex % 40);
+    const tickedData = [
+      `14:22:${String(seconds).padStart(2,'0')}`,
+      data[1], data[2], data[3]
+    ];
+    const row = createRow(tickedData, 'normal');
+    stream.appendChild(row);
+    visibleRows.push(row);
+    queryIndex++;
+  }
+
+  // Scroll the stream
+  stream.style.transform = `translateY(-${Math.max(0, (visibleRows.length - 18) * 18.7)}px)`;
+
+  // Trim old rows
+  if (visibleRows.length > 60) {
+    const old = visibleRows.shift();
+    old.remove();
+  }
+}
+
+// Start animation
+setInterval(addRow, 280);
+// Seed a few rows immediately
+for (let i = 0; i < 14; i++) addRow();
+</script>
+
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    darkMode: true,
+    background: '#131a10',
+    primaryColor: '#1e2b19',
+    primaryTextColor: '#c8dbb8',
+    primaryBorderColor: '#253020',
+    lineColor: '#7fff6b',
+    secondaryColor: '#253020',
+    tertiaryColor: '#0d0f0b',
+    edgeLabelBackground: '#131a10',
+    clusterBkg: '#1a2416',
+    titleColor: '#e8f5e0',
+    nodeTextColor: '#c8dbb8',
+  },
+  flowchart: { htmlLabels: true, curve: 'basis', padding: 20 },
+  quadrantChart: {
+    pointRadius: 5,
+    pointLabelFontSize: 11,
+  }
+});
+</script>
+
+</body>
+</html>

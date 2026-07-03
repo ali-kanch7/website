@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Cloud Complexity Gap — Why Spending More Isn't Making You Safer | Ali Asgar Kanchwala</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Epilogue:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg:          #f0f4f8;
+    --bg-card:     #1a1f2e;
+    --bg-raise:    #252b3d;
+    --bg-tint:     #e4eaf2;
+    --bg-tint2:    #d6dfe9;
+    --accent:      #e8420a;
+    --accent-dim:  #9c2c07;
+    --accent2:     #0057b8;
+    --accent2-dim: #003d82;
+    --danger:      #cc1f1f;
+    --text:        #1c2333;
+    --text-bright: #0d1220;
+    --text-dim:    #5a6780;
+    --border:      #c8d3e0;
+    --border-card: #323a52;
+    --display:     'DM Serif Display', Georgia, serif;
+    --body:        'Epilogue', system-ui, sans-serif;
+    --mono:        'Courier Prime', 'Courier New', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--body);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #progress {
+    position: fixed; top: 0; left: 0;
+    height: 3px; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    z-index: 999;
+    transition: width 0.1s linear;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    background: var(--bg-card);
+    color: #e8edf5;
+    padding: 72px 40px 60px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 80% 20%, rgba(0,87,184,0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 60% at 20% 80%, rgba(232,66,10,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 56px;
+    align-items: start;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+
+  .hero h1 {
+    font-family: var(--display);
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 400;
+    line-height: 1.15;
+    color: #f2f5fa;
+    margin-bottom: 24px;
+  }
+
+  .hero h1 em {
+    font-style: italic;
+    color: #c8d5e8;
+  }
+
+  .hero-sub {
+    font-size: 16px;
+    color: #94a3bd;
+    line-height: 1.65;
+    max-width: 520px;
+    margin-bottom: 32px;
+  }
+
+  .hero-byline-mini {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-top: 24px;
+    border-top: 1px solid #2e364f;
+  }
+
+  .hero-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .hero-byline-mini .name {
+    font-weight: 600;
+    font-size: 13px;
+    color: #c8d5e8;
+  }
+
+  .hero-byline-mini .role {
+    font-size: 11px;
+    color: #6b7a99;
+    font-family: var(--mono);
+  }
+
+  /* ── FRAGMENTED DASHBOARD HERO DEVICE ── */
+  .frag-dashboard {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(3, auto);
+    gap: 8px;
+  }
+
+  .frag-pane {
+    background: #0e1220;
+    border: 1px solid #2a3248;
+    border-radius: 4px;
+    padding: 12px 14px;
+    font-family: var(--mono);
+    position: relative;
+    transition: border-color 0.3s;
+  }
+
+  .frag-pane.span2 {
+    grid-column: 1 / 3;
+  }
+
+  .frag-pane-header {
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #3d4d6a;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .frag-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: #3d4d6a;
+  }
+
+  .frag-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #4a6080;
+    display: block;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .frag-label {
+    font-size: 9px;
+    color: #2e3d55;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .frag-bars {
+    display: flex;
+    gap: 3px;
+    align-items: flex-end;
+    height: 28px;
+    margin-top: 4px;
+  }
+
+  .frag-bar {
+    flex: 1;
+    background: #1e2840;
+    border-radius: 1px;
+  }
+
+  .frag-pane.critical {
+    border-color: var(--danger);
+    animation: criticalPulse 2.2s ease-in-out infinite;
+  }
+
+  .frag-pane.critical .frag-value {
+    color: #e05555;
+  }
+
+  .frag-pane.critical .frag-dot {
+    background: var(--danger);
+    animation: dotBlink 2.2s ease-in-out infinite;
+  }
+
+  .frag-pane.critical .frag-pane-header {
+    color: #6b2020;
+  }
+
+  .frag-pane.active .frag-value {
+    color: rgba(0,87,184,0.5);
+  }
+
+  .frag-pane.active .frag-dot {
+    background: rgba(0,87,184,0.4);
+  }
+
+  .no-link-label {
+    position: absolute;
+    bottom: 8px; right: 10px;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    color: #1e2535;
+    text-transform: uppercase;
+  }
+
+  .frag-divider {
+    grid-column: 1 / 3;
+    height: 1px;
+    background: repeating-linear-gradient(90deg, #1e2535 0px, #1e2535 6px, transparent 6px, transparent 12px);
+    opacity: 0.5;
+    margin: 2px 0;
+    position: relative;
+  }
+
+  .frag-divider::after {
+    content: '// NO SHARED CONTEXT';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    color: #2a3040;
+    background: #0e1220;
+    padding: 0 8px;
+    white-space: nowrap;
+  }
+
+  @keyframes criticalPulse {
+    0%, 100% { border-color: var(--danger); box-shadow: 0 0 0 0 rgba(204,31,31,0); }
+    50% { border-color: #e83333; box-shadow: 0 0 12px 2px rgba(204,31,31,0.25); }
+  }
+
+  @keyframes dotBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ── LAYOUT ── */
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .container-wide {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── ARTICLE BODY ── */
+  .article-body {
+    padding: 64px 0 48px;
+  }
+
+  .article-body p {
+    font-size: 16.5px;
+    line-height: 1.78;
+    color: var(--text);
+    margin-bottom: 24px;
+  }
+
+  .article-body p:last-child { margin-bottom: 0; }
+
+  h2 {
+    font-family: var(--display);
+    font-size: clamp(1.6rem, 3vw, 2.1rem);
+    font-weight: 400;
+    color: var(--text-bright);
+    margin: 64px 0 20px;
+    line-height: 1.2;
+  }
+
+  h3 {
+    font-family: var(--body);
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--text-bright);
+    margin: 36px 0 12px;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+  }
+
+  /* ── STAT CALLOUT STRIP ── */
+  .stat-strip {
+    background: var(--bg-card);
+    color: #e0e7f2;
+    padding: 32px 40px;
+    margin: 48px 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border-left: 4px solid var(--accent);
+  }
+
+  .stat-item {
+    padding: 0 28px;
+    border-right: 1px solid #2e364f;
+  }
+
+  .stat-item:first-child { padding-left: 0; }
+  .stat-item:last-child { border-right: none; }
+
+  .stat-num {
+    font-family: var(--display);
+    font-size: 2.8rem;
+    line-height: 1;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .stat-desc {
+    font-size: 12px;
+    color: #94a3bd;
+    line-height: 1.5;
+  }
+
+  /* ── DIAGRAM WRAP ── */
+  .diagram-wrap {
+    margin: 48px 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    overflow: hidden;
+  }
+
+  .dw-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 20px;
+    background: var(--bg-raise);
+    border-bottom: 1px solid var(--border-card);
+  }
+
+  .dw-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  .dw-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #5a6780;
+    flex: 1;
+  }
+
+  .dw-body {
+    padding: 32px 24px;
+    overflow-x: auto;
+  }
+
+  .dw-body .mermaid {
+    display: flex;
+    justify-content: center;
+  }
+
+  /* ── CALLOUTS ── */
+  .callout {
+    margin: 36px 0;
+    padding: 20px 24px;
+    border-left: 3px solid;
+    background: var(--bg-tint);
+  }
+
+  .callout-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-weight: 700;
+  }
+
+  .callout p {
+    margin-bottom: 0 !important;
+    font-size: 15px !important;
+    line-height: 1.65 !important;
+  }
+
+  .callout.info {
+    border-color: var(--accent2);
+  }
+
+  .callout.info .callout-label { color: var(--accent2); }
+
+  .callout.warn {
+    border-color: #c97a00;
+    background: #fdf6e8;
+  }
+
+  .callout.warn .callout-label { color: #9a5c00; }
+
+  .callout.critical {
+    border-color: var(--danger);
+    background: #fdf0f0;
+  }
+
+  .callout.critical .callout-label { color: var(--danger); }
+
+  /* ── PULL QUOTE ── */
+  .pull {
+    margin: 52px 0;
+    padding: 28px 32px;
+    border-left: 4px solid var(--accent);
+    background: var(--bg-tint);
+  }
+
+  .pull p {
+    font-family: var(--display);
+    font-size: clamp(1.2rem, 2.5vw, 1.55rem) !important;
+    font-weight: 400 !important;
+    line-height: 1.4 !important;
+    color: var(--text-bright) !important;
+    font-style: italic;
+    margin-bottom: 0 !important;
+  }
+
+  /* ── NUMBERED ITEMS ── */
+  .impl-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 32px 0;
+  }
+
+  .impl-item {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    background: var(--bg-tint);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .impl-item:hover {
+    border-color: var(--accent2);
+  }
+
+  .impl-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border-right: 1px solid var(--border-card);
+    font-family: var(--display);
+    font-size: 1.3rem;
+    color: var(--accent);
+    font-style: italic;
+    padding: 16px 8px;
+  }
+
+  .impl-body {
+    padding: 16px 20px;
+  }
+
+  .impl-body strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 11px;
+  }
+
+  .impl-body p {
+    margin: 0 !important;
+    font-size: 14px !important;
+    line-height: 1.55 !important;
+    color: var(--text-dim) !important;
+  }
+
+  /* ── COMPARISON TABLE ── */
+  .compare-wrap {
+    margin: 40px 0;
+    overflow-x: auto;
+  }
+
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  .compare-table th {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .compare-table th.col-old {
+    color: var(--danger);
+    background: #fdf0f0;
+  }
+
+  .compare-table th.col-new {
+    color: var(--accent2);
+    background: #eef3fc;
+  }
+
+  .compare-table th.col-label {
+    background: var(--bg-tint);
+    color: var(--text-dim);
+    width: 160px;
+  }
+
+  .compare-table td {
+    padding: 12px 16px;
+    vertical-align: top;
+    border-bottom: 1px solid var(--border);
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  .compare-table td.col-old {
+    background: #fefafa;
+    color: #6b2020;
+  }
+
+  .compare-table td.col-new {
+    background: #f5f8fe;
+    color: #003580;
+  }
+
+  .compare-table td.col-label {
+    background: var(--bg-tint);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  /* ── VENDOR GRID ── */
+  .vendor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    margin: 28px 0;
+  }
+
+  .vendor-card {
+    background: var(--bg-tint);
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+
+  .vendor-card:hover {
+    border-color: var(--accent2);
+    transform: translateY(-2px);
+  }
+
+  .vendor-card .v-name {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+  }
+
+  .vendor-card .v-role {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+  }
+
+  /* ── DATA BARS ── */
+  .data-bars {
+    margin: 32px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .data-bar-row {
+    display: grid;
+    grid-template-columns: 200px 1fr 40px;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .data-bar-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: right;
+    font-family: var(--mono);
+    letter-spacing: 0.04em;
+  }
+
+  .data-bar-track {
+    height: 8px;
+    background: var(--bg-tint2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .data-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent2);
+  }
+
+  .data-bar-fill.hot { background: var(--accent); }
+  .data-bar-fill.critical { background: var(--danger); }
+
+  .data-bar-pct {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+  }
+
+  /* ── CLOSING ── */
+  .closing {
+    margin-top: 80px;
+    padding-top: 48px;
+    border-top: 1px solid var(--border);
+  }
+
+  .kicker {
+    margin-top: 40px;
+    font-family: var(--display);
+    font-size: clamp(1.4rem, 3vw, 1.9rem);
+    font-weight: 400;
+    line-height: 1.25;
+    color: var(--text-bright);
+  }
+
+  .author-card {
+    margin-top: 48px;
+    padding: 20px 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    color: #e0e7f2;
+  }
+
+  .author-avatar {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .author-name {
+    font-weight: 700;
+    font-size: 15px;
+    color: #f0f4fa;
+    margin-bottom: 3px;
+  }
+
+  .author-role {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #6b7a99;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── DIVIDER ── */
+  .section-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0;
+  }
+
+  /* ── REPORT BADGE ── */
+  .report-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-tint);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    margin-bottom: 36px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .report-badge .rb-accent {
+    color: var(--accent2);
+    font-weight: 700;
+  }
+
+  /* ── TWO-COL GRID ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 28px 0;
+  }
+
+  .tc-card {
+    padding: 20px;
+    border: 1px solid var(--border);
+  }
+
+  .tc-card.fragmented {
+    background: #fdf0f0;
+    border-color: #e8c0c0;
+  }
+
+  .tc-card.unified {
+    background: #eef3fc;
+    border-color: #b0c8ef;
+  }
+
+  .tc-head {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid;
+  }
+
+  .tc-card.fragmented .tc-head {
+    color: var(--danger);
+    border-color: #e8c0c0;
+  }
+
+  .tc-card.unified .tc-head {
+    color: var(--accent2);
+    border-color: #b0c8ef;
+  }
+
+  .tc-point {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--text);
+    margin-bottom: 8px;
+    padding-left: 12px;
+    position: relative;
+  }
+
+  .tc-point::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    color: var(--text-dim);
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 920px) {
+    .hero-inner {
+      grid-template-columns: 1fr;
+    }
+
+    .frag-dashboard {
+      display: none;
+    }
+
+    .stat-strip {
+      grid-template-columns: 1fr;
+      gap: 24px;
+      padding: 28px 24px;
+    }
+
+    .stat-item {
+      padding: 0;
+      border-right: none;
+      border-bottom: 1px solid #2e364f;
+      padding-bottom: 20px;
+    }
+
+    .stat-item:last-child { border-bottom: none; padding-bottom: 0; }
+
+    .data-bar-row {
+      grid-template-columns: 140px 1fr 40px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .hero { padding: 48px 24px 44px; }
+    h2 { margin-top: 48px; }
+    .two-col { grid-template-columns: 1fr; }
+    .compare-table { font-size: 12px; }
+    .compare-table td, .compare-table th { padding: 10px 12px; }
+    .data-bar-row {
+      grid-template-columns: 100px 1fr 36px;
+    }
+    .data-bar-label { font-size: 10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .frag-pane.critical {
+      animation: none;
+      border-color: var(--danger);
+      box-shadow: none;
+    }
+    .frag-pane.critical .frag-dot {
+      animation: none;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<!-- ═══════════════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <div class="hero-text">
+      <div class="hero-meta">Cloud Security · Infrastructure Risk · June 2026</div>
+      <h1>The Cloud Complexity Gap — <em>Why Spending More Isn't Making You Safer</em></h1>
+      <p class="hero-sub">Unpacking Fortinet's 2026 Cloud Security Report and what 1,163 security practitioners are really telling us about fragmented defenses, trust in automation, and why maturity keeps lagging investment.</p>
+      <div class="hero-byline-mini">
+        <div class="hero-avatar">AA</div>
+        <div>
+          <div class="name">Ali Asgar Kanchwala</div>
+          <div class="role">Network Security Expert · Abu Dhabi, UAE</div>
+        </div>
+      </div>
+    </div>
+    <!-- HERO DEVICE: Fragmented Dashboard -->
+    <div class="frag-dashboard" aria-hidden="true">
+      <div class="frag-pane">
+        <div class="frag-pane-header">
+          <span>Identity & Access</span>
+          <div class="frag-dot"></div>
+        </div>
+        <span class="frag-value">247</span>
+        <div class="frag-label">Excessive permissions flagged</div>
+      </div>
+      <div class="frag-pane critical">
+        <div class="frag-pane-header">
+          <span>Posture / CSPM</span>
+          <div class="frag-dot"></div>
+        </div>
+        <span class="frag-value">83</span>
+        <div class="frag-label">Critical misconfigs</div>
+        <span class="no-link-label">↑ no context from IAM</span>
+      </div>
+      <div class="frag-divider"></div>
+      <div class="frag-pane">
+        <div class="frag-pane-header">
+          <span>Data Exposure</span>
+          <div class="frag-dot"></div>
+        </div>
+        <span class="frag-value">14</span>
+        <div class="frag-label">Sensitive buckets public</div>
+      </div>
+      <div class="frag-pane active">
+        <div class="frag-pane-header">
+          <span>Runtime / Workload</span>
+          <div class="frag-dot"></div>
+        </div>
+        <span class="frag-value">1.2k</span>
+        <div class="frag-label">Events last 4h</div>
+      </div>
+      <div class="frag-divider"></div>
+      <div class="frag-pane span2">
+        <div class="frag-pane-header">
+          <span>Automation status</span>
+          <div class="frag-dot"></div>
+        </div>
+        <div class="frag-bars">
+          <div class="frag-bar" style="height:40%;background:#1a2535"></div>
+          <div class="frag-bar" style="height:55%;background:#1e2b40"></div>
+          <div class="frag-bar" style="height:35%;background:#1a2535"></div>
+          <div class="frag-bar" style="height:70%;background:#1e2b40"></div>
+          <div class="frag-bar" style="height:45%;background:#1a2535"></div>
+          <div class="frag-bar" style="height:30%;background:#1e2b40"></div>
+          <div class="frag-bar" style="height:60%;background:#1a2535"></div>
+          <div class="frag-bar" style="height:50%;background:#1e2b40"></div>
+        </div>
+        <div class="frag-label" style="margin-top:6px">Alert-only · Remediation: manual</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════
+     ARTICLE
+═══════════════════════════════════════════════════ -->
+<main>
+<div class="container">
+<article class="article-body">
+
+  <div class="report-badge">
+    <span>Based on:</span>
+    <span class="rb-accent">Fortinet / Cybersecurity Insiders</span>
+    <span>2026 Cloud Security Report · n=1,163</span>
+  </div>
+
+  <p>Every year the cloud security industry publishes a survey report, and every year the numbers get worse. More breaches, more misconfigurations, more talent shortages — and yet more budget allocated than the year before. The Fortinet 2026 Cloud Security Report, produced with Cybersecurity Insiders across 1,163 senior practitioners, is worth reading not because its findings are surprising, but because they finally put numbers to something most of us in the field have been watching happen for three or four years: investment is increasing, and maturity is not keeping pace.</p>
+
+  <p>That gap — between what organizations are spending and what they're achieving — is the report's central argument. The authors frame it as the "cloud complexity gap." I'd call it something more specific: a structural failure of integration. The money is there. The tools are there. Often too many tools. What's missing is the connective tissue that lets those tools operate as a coherent defense rather than as a collection of expensive consoles that each tell a different story about the same environment.</p>
+
+  <p>Let me work through what the data actually shows, where I think it lands correctly, and where the practitioner reality is more complicated than a survey number can capture.</p>
+
+  <!-- ═══ 1 ═══ -->
+  <h2>The Multi-Cloud Reality Nobody Planned For</h2>
+
+  <p>The report opens with a baseline that should surprise nobody who's spent time in enterprise cloud security: 88% of organizations now operate across hybrid or multi-cloud environments, up from 82% last year. Of those, 81% are running critical workloads across two or more cloud providers.</p>
+
+  <p>Here's the thing about that statistic. In most organizations I've encountered, that multi-cloud sprawl wasn't a deliberate architectural decision. It wasn't a CISO sitting down and saying "we want Azure for identity, AWS for compute, GCP for analytics." It happened through acquisition (one company runs on AWS, the other on Azure, the merger doesn't consolidate them), through shadow IT (a development team provisioned a GCP project without telling infrastructure), and through vendor lock-in avoidance arguments that sounded reasonable in 2019 and now produce operational complexity nobody budgeted to manage.</p>
+
+  <p>The result is that security teams are asked to maintain consistent visibility and policy enforcement across environments that were never designed to integrate, that have completely different identity models, different logging formats, different native security tooling, and different blast radii for misconfiguration. The attack surface doesn't just expand — it fragments into pieces that are increasingly difficult to reason about together.</p>
+
+  <div class="callout info">
+    <div class="callout-label">Practitioner note</div>
+    <p>The 29% figure — organizations using more than three cloud providers — is the one that should give CISOs pause. At three-plus providers, you're almost certainly past the point where any single team has deep operational expertise across all of them. You're relying on breadth rather than depth, which is exactly the posture that leaves misconfiguration gaps in the seams.</p>
+  </div>
+
+  <!-- ═══ 2 ═══ -->
+  <h2>Tool Sprawl as the Primary Failure Mode</h2>
+
+  <p>69% of organizations cite tool sprawl and visibility gaps as their top barrier to effective cloud security. This is the finding I consider most important in the entire report, and it's one the industry has been slow to be honest about.</p>
+
+  <p>There's a procurement pattern that repeats itself almost everywhere. A new cloud risk category gets headlines — container escapes, say, or cloud IAM privilege escalation. A CISO reads about it, budget gets allocated, a point tool gets purchased and deployed. Eighteen months later, the team has fourteen consoles, each generating alerts, none of them aware of what the others know. The CSPM tool sees a misconfigured S3 bucket as a medium-severity finding. The IAM tool sees an overprivileged service account as a low-severity finding. Neither tool knows the other thing exists. A human analyst — if one gets to it — might recognize that the bucket and the service account are in the same blast radius and together constitute a critical exposure path. But that analyst is also looking at 400 other alerts that day.</p>
+
+  <p>This is the exposure chain the report describes, and it's accurate. The Fortinet data shows that 69% of organizations actually experienced identity and access security incidents in the past 12 months, followed by 65% with configuration and posture incidents, and 54% with data exposure incidents. Those three categories are connected — in practice, most serious cloud breaches are a chain of all three, not an isolated incident in one domain. An overprivileged identity plus a misconfigured resource plus sensitive data in the wrong place is not three separate security problems. It is one attack path.</p>
+
+  <div class="diagram-wrap">
+    <div class="dw-bar">
+      <div class="dw-dot" style="background:#cc1f1f"></div>
+      <div class="dw-dot" style="background:#c97a00"></div>
+      <div class="dw-dot" style="background:#0057b8"></div>
+      <div class="dw-title">Figure 01 — The Cloud Risk Exposure Chain: How Isolated Findings Combine into Breach Paths</div>
+    </div>
+    <div class="dw-body">
+      <div class="mermaid">
+flowchart LR
+    A["🔑 IAM\nOverprivileged\nservice account\n──────────\nSeverity: LOW\nin isolation"] -->|"provides access to"| B["⚙️ CSPM\nMisconfigured\nS3 bucket /\nstorage resource\n──────────\nSeverity: MEDIUM\nin isolation"]
+    B -->|"exposes"| C["📂 Data\nCustomer PII\nfinancial records\n──────────\nSeverity: HIGH\nin isolation"]
+    A -.->|"No shared\ncontext"| C
+    D["🤖 Attacker\nAutomated\npermission\nmapping"] -->|"identifies chain"| A
+    D -->|"exploits"| B
+    D -->|"exfiltrates"| C
+    E["🔔 Tool A\nIAM alerts"] -. "siloed" .- F["🔔 Tool B\nCSPM alerts"]
+    F -. "siloed" .- G["🔔 Tool C\nData alerts"]
+    style A fill:#252b3d,stroke:#5a6780,color:#94a3bd
+    style B fill:#2d1a10,stroke:#9c2c07,color:#e8a080
+    style C fill:#1a1010,stroke:#cc1f1f,color:#e07070
+    style D fill:#0d1a2e,stroke:#0057b8,color:#6aabf0
+    style E fill:#1e1e28,stroke:#3a3a50,color:#5a6780
+    style F fill:#1e1e28,stroke:#3a3a50,color:#5a6780
+    style G fill:#1e1e28,stroke:#3a3a50,color:#5a6780
+      </div>
+    </div>
+  </div>
+
+  <p>The survey's data on detection confidence reflects this. 66% of organizations lack strong confidence in their ability to detect and respond to cloud threats in real time — up from 64% the previous year. The direction of travel is wrong. As cloud environments grow and security investment rises, detection confidence is moving in the opposite direction. That is the clearest evidence available that tooling and budget aren't the bottleneck.</p>
+
+  <div class="stat-strip">
+    <div class="stat-item">
+      <span class="stat-num">69%</span>
+      <div class="stat-desc">cite tool sprawl &amp; visibility gaps as their top cloud security barrier</div>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">66%</span>
+      <div class="stat-desc">lack strong confidence in real-time cloud threat detection — up from 64%</div>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">59%</span>
+      <div class="stat-desc">still rate their cloud security posture at the two lowest maturity stages despite rising budgets</div>
+    </div>
+  </div>
+
+  <!-- ═══ 3 ═══ -->
+  <h2>The Budget-Maturity Disconnect</h2>
+
+  <p>62% of organizations expect their cloud security budgets to increase over the next 12 months. Cloud security now accounts for 34% of total IT security spending. And yet 59% of organizations still rate their cloud security posture at the initial or developing stage — the two lowest tiers on a five-level maturity scale.</p>
+
+  <p>I've seen this pattern close-up. Budget gets approved, tools get procured, dashboards get deployed. What doesn't follow automatically is the organizational capability to operate those tools well: the integration work, the tuning cycles, the processes for acting on findings, the cross-team coordination between cloud engineering and security operations. Each new tool adds operational overhead. It needs integrating. It generates alerts that need triaging. It needs policies written for it. In environments where the security team is already stretched, each new tool is as much a burden as it is a capability.</p>
+
+  <div class="pull">
+    <p>The problem isn't that organizations are underinvesting. It's that they're investing in the wrong unit of value — tools — when the bottleneck is integration, process maturity, and the human capacity to operate what they've already bought.</p>
+  </div>
+
+  <p>The report frames this as "the added operational tax of managing disconnected tools." That's an accurate description. What it means in practice is that a security team managing twelve consoles is spending more analyst hours on correlation and context-switching than on actual threat investigation. The marginal value of adding a thirteenth tool in that environment is negative.</p>
+
+  <!-- ═══ 4 ═══ -->
+  <h2>The Talent Problem Has No Short-Term Fix</h2>
+
+  <p>74% of organizations report an active shortage of cybersecurity talent. 77% express high concern about the industry-wide skills gap. None of this is new. What's worth noting is how the talent shortage interacts with the fragmentation problem.</p>
+
+  <p>Disconnected tools don't just require more analysts — they require analysts with deep expertise across multiple platforms, multiple cloud providers, multiple identity models, and multiple compliance frameworks simultaneously. The skills required to be genuinely effective in cloud security in 2026 — AWS IAM internals, Azure Conditional Access policy structures, Kubernetes RBAC edge cases, CSPM rule tuning, incident response across hybrid environments — are skills that take years to develop and are in short supply everywhere. The expectation that you can solve this by hiring is unrealistic at the scale the problem exists.</p>
+
+  <div class="callout warn">
+    <div class="callout-label">The compounding effect</div>
+    <p>When understaffed teams face alert overload from fragmented tools, they don't investigate everything. They triage. The things that don't look obviously critical get deprioritized. This is precisely the conditions under which the exposure chains described above — low-severity IAM finding plus medium-severity misconfiguration — go uninvestigated until they're part of an incident report.</p>
+  </div>
+
+  <p>The report notes that overextended teams default to alert-driven workflows, and proactive threat hunting, architecture improvement, and automation refinement get deprioritized. Accurate. The problem is that the stuff that gets deprioritized — hardening, hunting, tuning — is exactly what builds maturity. Alert response is reactive by definition. You cannot triage your way to a mature security posture.</p>
+
+  <!-- ═══ 5 ═══ -->
+  <h2>Where the Risk Actually Concentrates</h2>
+
+  <p>The survey's breakdown of cloud security concerns — identity and access at 77%, misconfigured cloud services at 70%, data exposure at 66% — maps closely to what organizations actually report experiencing. The experienced incident rates (identity: 69%, configuration: 65%, data exposure: 54%) track the concern rankings almost exactly.</p>
+
+  <p>That alignment is useful because it tells us something: practitioners' instincts about where the risk lives are roughly correct. The gap isn't in risk identification. It's in risk correlation and remediation. Most organizations know they have identity problems. They know they have configuration problems. They struggle to see how those problems connect across their environment in ways that create real attack paths.</p>
+
+  <div class="diagram-wrap">
+    <div class="dw-bar">
+      <div class="dw-dot" style="background:#cc1f1f"></div>
+      <div class="dw-dot" style="background:#c97a00"></div>
+      <div class="dw-dot" style="background:#0057b8"></div>
+      <div class="dw-title">Figure 02 — Cloud Incident Experience vs Concern: The Perception-Reality Gap</div>
+    </div>
+    <div class="dw-body">
+      <div class="mermaid">
+xychart-beta
+    title "Experienced Incidents vs Concern Level (%)"
+    x-axis ["Identity & Access", "Config / Posture", "Data Exposure", "Workload / Runtime", "Supply Chain", "Insider Threats"]
+    y-axis "Percentage (%)" 0 --> 90
+    bar [69, 65, 54, 42, 36, 31]
+    line [77, 70, 66, 59, 51, 43]
+      </div>
+    </div>
+  </div>
+
+  <div class="data-bars">
+    <div class="data-bar-row">
+      <div class="data-bar-label">Identity &amp; Access</div>
+      <div class="data-bar-track"><div class="data-bar-fill critical" style="width:77%"></div></div>
+      <div class="data-bar-pct">77%</div>
+    </div>
+    <div class="data-bar-row">
+      <div class="data-bar-label">Config &amp; Posture</div>
+      <div class="data-bar-track"><div class="data-bar-fill hot" style="width:70%"></div></div>
+      <div class="data-bar-pct">70%</div>
+    </div>
+    <div class="data-bar-row">
+      <div class="data-bar-label">Data Exposure</div>
+      <div class="data-bar-track"><div class="data-bar-fill hot" style="width:66%"></div></div>
+      <div class="data-bar-pct">66%</div>
+    </div>
+    <div class="data-bar-row">
+      <div class="data-bar-label">Workload &amp; Runtime</div>
+      <div class="data-bar-track"><div class="data-bar-fill" style="width:59%"></div></div>
+      <div class="data-bar-pct">59%</div>
+    </div>
+    <div class="data-bar-row">
+      <div class="data-bar-label">Supply Chain</div>
+      <div class="data-bar-track"><div class="data-bar-fill" style="width:51%"></div></div>
+      <div class="data-bar-pct">51%</div>
+    </div>
+    <div class="data-bar-row">
+      <div class="data-bar-label">Insider Threats</div>
+      <div class="data-bar-track"><div class="data-bar-fill" style="width:43%"></div></div>
+      <div class="data-bar-pct">43%</div>
+    </div>
+  </div>
+  <p style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:0.06em;margin-top:-16px;margin-bottom:32px">▲ Top concerns (survey: n=1,163) · Source: Fortinet 2026 Cloud Security Report</p>
+
+  <!-- ═══ 6 ═══ -->
+  <h2>Automation That Stops at the Alert Is Not Automation</h2>
+
+  <p>The automation findings are the section of this report I'd spend the most time on with any CISO. 37% of organizations describe their automation as "largely alert-focused" — it identifies potential issues and stops, leaving remediation to manual processes. Only 11% report autonomous remediation capabilities.</p>
+
+  <p>This matters because alert-focused automation doesn't solve the capacity problem — it reframes it. Instead of an analyst manually discovering a misconfiguration, an automated tool discovers it and creates a ticket. The analyst still has to read the ticket, assess the finding, understand the context, determine the blast radius, coordinate a fix, verify it was applied, and close the ticket. You've made the detection slightly faster. You haven't reduced the operational burden.</p>
+
+  <div class="compare-wrap">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th class="col-label">Capability</th>
+          <th class="col-old">Alert-Only Automation</th>
+          <th class="col-new">Outcome-Oriented Automation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-label">Detection</td>
+          <td class="col-old">Automated — tool identifies issue</td>
+          <td class="col-new">Automated — identifies issue plus blast radius context</td>
+        </tr>
+        <tr>
+          <td class="col-label">Triage</td>
+          <td class="col-old">Manual — analyst reads alert, assesses severity</td>
+          <td class="col-new">AI-assisted — risk score with cross-domain context provided</td>
+        </tr>
+        <tr>
+          <td class="col-label">Remediation</td>
+          <td class="col-old">Manual — ticket created, engineer assigned</td>
+          <td class="col-new">Automated for low-risk, high-confidence findings; human for complex</td>
+        </tr>
+        <tr>
+          <td class="col-label">Verification</td>
+          <td class="col-old">Manual — analyst confirms fix applied</td>
+          <td class="col-new">Automated — posture re-checked post-remediation</td>
+        </tr>
+        <tr>
+          <td class="col-label">MTTR Impact</td>
+          <td class="col-old">Marginal improvement — detection faster, response still manual</td>
+          <td class="col-new">Significant — removes human from low-risk remediation loop</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The constraint, as the report correctly identifies, is trust: you can only automate remediation on findings where the automated system has enough shared context to act with confidence. An automated system that closes a security group rule without knowing whether that rule is part of a legitimate production dependency is a liability, not an asset. Building that trust requires exactly what most organizations currently lack — consolidated visibility across domains, shared data models, and enough historical baseline to distinguish a genuine misconfiguration from an intentional deviation.</p>
+
+  <p>The AI picture is similarly early-stage. 32% of organizations describe their AI adoption for cloud security as limited to pilot efforts; only 18% describe AI-driven threat detection as fully operational. What the attackers are doing in the meantime is not limited to pilots. Automated scanning for misconfigurations, AI-assisted permission path enumeration, machine-speed exploitation of short exposure windows — these are not theoretical. The window between exposure and exploitation continues to compress, and defenses that depend on human-paced workflows fall further behind every year.</p>
+
+  <div class="callout critical">
+    <div class="callout-label">The asymmetry problem</div>
+    <p>Attackers have no alert fatigue, no organizational silos between their IAM-scanning tool and their misconfiguration-scanning tool, no budget cycles to get through before they can deploy a new capability. They operate as integrated systems. Most enterprise defenses do not. That asymmetry is what "machine-speed threats" actually means in practice.</p>
+  </div>
+
+  <!-- ═══ 7 ═══ -->
+  <h2>The Platform Consolidation Argument: Real, But Complicated</h2>
+
+  <p>64% of organizations say that if they were starting fresh today, they would choose a single-vendor platform unifying network, cloud, and application security, rather than a best-of-breed approach. Only 27% would choose best-of-breed.</p>
+
+  <p>This is a significant shift in sentiment, and I think it reflects genuine operational exhaustion with integration overhead more than it reflects confidence that any single vendor can actually deliver on the unified promise. The two are different things.</p>
+
+  <div class="two-col">
+    <div class="tc-card fragmented">
+      <div class="tc-head">The fragmented reality (today)</div>
+      <div class="tc-point">CSPM, CIEM, DSPM, CDR, WAF — separate platforms, separate consoles, separate alert streams</div>
+      <div class="tc-point">Cross-domain correlation is manual, slow, and dependent on analyst availability</div>
+      <div class="tc-point">Policy enforcement is inconsistent — each tool has its own configuration model</div>
+      <div class="tc-point">Integration overhead absorbs a meaningful fraction of security team capacity</div>
+    </div>
+    <div class="tc-card unified">
+      <div class="tc-head">The unified model (the goal)</div>
+      <div class="tc-point">Shared telemetry across identity, posture, data, and runtime signals</div>
+      <div class="tc-point">Single policy plane with consistent enforcement across environments</div>
+      <div class="tc-point">Cross-domain risk correlation happens in the platform, not in an analyst's head</div>
+      <div class="tc-point">Automation can act because it has context — not just a single-domain alert</div>
+    </div>
+  </div>
+
+  <p>The report frames the preference for unification as demand for "open, interoperable platforms that integrate through shared data models and coordinated enforcement" rather than a single monolithic product. That's the nuance worth preserving. The goal is shared context and coordinated response, not necessarily a single-vendor lock-in. The question practitioners should ask when evaluating CNAPP platforms is not "does this replace twelve tools with one console" — it's "does this give me a shared data model across identity, posture, data, and runtime signals, and does that model actually enable automation I can trust?"</p>
+
+  <p>The survey's buying criteria support this read: coverage and depth across cloud environments (79%), integration and orchestration across security domains (72%), and automation and compliance capabilities (68%) ranked above ease of use and cost. Practitioners know what they actually need. The hard part is finding platforms that deliver it without reintroducing fragmentation under a single brand name.</p>
+
+  <!-- ═══ 8 ═══ -->
+  <h2>What Actually Works: An Architecture View</h2>
+
+  <p>The report's closing principles — treat visibility as a foundation, reduce fragmentation, connect the risk domains, automate for outcomes, extend integration beyond cloud boundaries — are correct but generic. Let me translate them into what this looks like architecturally.</p>
+
+  <div class="impl-list">
+    <div class="impl-item">
+      <div class="impl-num">1</div>
+      <div class="impl-body">
+        <strong>Build a unified identity posture across cloud providers first</strong>
+        <p>Before anything else, get a single inventory of all identities — human and non-human — across AWS, Azure, GCP, and any SaaS platforms. Tools like Wiz, Orca, or a mature CIEM capability within a CNAPP platform (Palo Alto Prisma Cloud, Microsoft Defender for Cloud, Lacework) can generate this. Without it, you cannot assess blast radius, and without blast radius assessment, alert triage is guesswork.</p>
+      </div>
+    </div>
+    <div class="impl-item">
+      <div class="impl-num">2</div>
+      <div class="impl-body">
+        <strong>Instrument resource configuration centrally before adding detection tools</strong>
+        <p>AWS Config, Azure Policy, and GCP Organization Policy constraints — enforced via Infrastructure-as-Code and monitored centrally — catch misconfiguration at the source. A CSPM tool that scans after-the-fact is better than nothing, but policy-as-code that prevents misconfiguration from reaching production is materially better. The gap between these two approaches is where most cloud security programs currently sit.</p>
+      </div>
+    </div>
+    <div class="impl-item">
+      <div class="impl-num">3</div>
+      <div class="impl-body">
+        <strong>Implement cross-domain risk correlation before automating remediation</strong>
+        <p>The prerequisite for trusting automated remediation is a shared data model that connects identity, posture, and data context. Without it, automated remediation acts on incomplete information. This is why most organizations are stuck at alert-only automation — they don't have the cross-domain context that would let them act with confidence. Platforms like Wiz, Orca, or Lacework build this context graph natively; purpose-built SIEM integrations can approximate it, though the operational overhead is higher.</p>
+      </div>
+    </div>
+    <div class="impl-item">
+      <div class="impl-num">4</div>
+      <div class="impl-body">
+        <strong>Apply least-privilege enforcement to non-human identities as aggressively as human identities</strong>
+        <p>Most IAM hygiene programs focus on human accounts. Service accounts, CI/CD pipeline identities, Lambda execution roles, and Kubernetes service accounts are frequently over-privileged and rarely rotated. AWS IRSA, Azure Managed Identities, and GCP Workload Identity Federation exist precisely to constrain non-human identity scope — use them. SPIFFE/SPIRE for workload identity in heterogeneous environments adds cryptographic attestation that makes excessive permission grants easier to detect and remediate.</p>
+      </div>
+    </div>
+    <div class="impl-item">
+      <div class="impl-num">5</div>
+      <div class="impl-body">
+        <strong>Treat data classification as a security control, not a compliance exercise</strong>
+        <p>66% of organizations are concerned about data exposure, but data security tools frequently operate outside the security operations workflow. Knowing that a storage resource is publicly accessible is useful. Knowing that storage resource contains classified data and is accessible by an overprivileged service account is actionable intelligence. Data classification that feeds into the cross-domain risk model — not just into a compliance report — is what makes the difference.</p>
+      </div>
+    </div>
+  </div>
+
+  <p>The tooling landscape for this architecture has matured considerably. For UAE-based and regional enterprises in particular, where UAE PDPL data residency requirements and NCA Essential Cybersecurity Controls add a compliance layer on top of the technical security requirements, the integration of CNAPP capabilities with cloud-native controls needs to account for data sovereignty constraints that multi-region platforms sometimes handle inconsistently.</p>
+
+  <div class="diagram-wrap">
+    <div class="dw-bar">
+      <div class="dw-dot" style="background:#cc1f1f"></div>
+      <div class="dw-dot" style="background:#c97a00"></div>
+      <div class="dw-dot" style="background:#0057b8"></div>
+      <div class="dw-title">Figure 03 — Target State: Unified Visibility and Shared Context Architecture</div>
+    </div>
+    <div class="dw-body">
+      <div class="mermaid">
+flowchart TB
+    subgraph cloud_providers ["Cloud Environments"]
+      AWS["AWS\nIAM · Config · GuardDuty"]
+      AZ["Azure\nEntra ID · Defender · Policy"]
+      GCP["GCP\nWIF · SCC · Org Policy"]
+    end
+
+    subgraph cnapp ["Unified CNAPP / Security Platform"]
+      direction TB
+      CIEM["CIEM\nIdentity Posture"]
+      CSPM["CSPM\nConfiguration"]
+      DSPM["DSPM\nData Exposure"]
+      CDR["CDR\nRuntime Threats"]
+      GRAPH["🔗 Shared Risk Graph\nCross-domain context"]
+      CIEM --> GRAPH
+      CSPM --> GRAPH
+      DSPM --> GRAPH
+      CDR --> GRAPH
+    end
+
+    subgraph response ["Response Layer"]
+      AUTO["Automated\nRemediation\n(low-risk, high-confidence)"]
+      SOC["SOC Analyst\n(complex, ambiguous)"]
+      GRAPH --> AUTO
+      GRAPH --> SOC
+    end
+
+    AWS --> CIEM
+    AWS --> CSPM
+    AZ --> CIEM
+    AZ --> CSPM
+    GCP --> CIEM
+    GCP --> DSPM
+    AWS --> CDR
+    AZ --> CDR
+    GCP --> CDR
+
+    style GRAPH fill:#0d1a2e,stroke:#0057b8,color:#6aabf0
+    style AUTO fill:#0d2210,stroke:#2d6a4f,color:#6abf8a
+    style SOC fill:#1a1f2e,stroke:#5a6780,color:#94a3bd
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 9 ═══ -->
+  <h2>The Vendor Landscape Worth Knowing</h2>
+
+  <p>The report doesn't rank vendors, which is appropriate given who commissioned it. For practitioners trying to map the architecture above to actual platforms, here's where the market currently sits:</p>
+
+  <div class="vendor-grid">
+    <div class="vendor-card">
+      <div class="v-name">Wiz</div>
+      <div class="v-role">CNAPP · Risk graph · Agentless</div>
+    </div>
+    <div class="vendor-card">
+      <div class="v-name">Palo Alto Prisma Cloud</div>
+      <div class="v-role">CNAPP · CSPM · CIEM · CDR</div>
+    </div>
+    <div class="vendor-card">
+      <div class="v-name">Microsoft Defender for Cloud</div>
+      <div class="v-role">Hybrid · Azure-native · CWPP</div>
+    </div>
+    <div class="vendor-card">
+      <div class="v-name">Lacework</div>
+      <div class="v-role">Anomaly detection · Polygraph</div>
+    </div>
+    <div class="vendor-card">
+      <div class="v-name">Orca Security</div>
+      <div class="v-role">Agentless CSPM · Side-scanning</div>
+    </div>
+    <div class="vendor-card">
+      <div class="v-name">CrowdStrike Falcon</div>
+      <div class="v-role">Cloud workload · EDR integration</div>
+    </div>
+    <div class="vendor-card">
+      <div class="v-name">Fortinet FortiCNP</div>
+      <div class="v-role">Cloud-native · Fabric integration</div>
+    </div>
+    <div class="vendor-card">
+      <div class="v-name">SPIFFE / SPIRE</div>
+      <div class="v-role">Workload identity · mTLS · x509</div>
+    </div>
+  </div>
+
+  <p>The honest observation about this market is that most of the platforms above have converged on similar feature sets at the product level. The differentiator is increasingly the quality of cross-domain correlation — the risk graph that connects identity, posture, and data findings — and the maturity of the automation capabilities that sit on top of it. Platform selection should be evaluated on those axes, not on feature checkbox completeness.</p>
+
+  <!-- ═══ CLOSING ═══ -->
+  <section class="closing">
+    <p>The Fortinet 2026 Cloud Security Report is valuable precisely because it quantifies something practitioners already know but struggle to articulate in budget conversations: the problem isn't lack of tools or lack of spend. It's lack of integration, lack of shared context, and a structural mismatch between how cloud environments operate and how most security programs are organized to defend them.</p>
+
+    <p>The path forward isn't another point tool. It's building the connective tissue — the shared identity model, the cross-domain risk graph, the policy enforcement plane — that lets what you've already deployed actually function as a coherent system. That's a harder architectural problem than buying another console. It takes longer, requires more coordination across teams, and doesn't produce an immediately impressive demo. But it's the only thing that actually closes the gap.</p>
+
+    <p>The 59% still sitting at initial and developing maturity despite rising budgets aren't failing because they're underfunded. They're failing because they're optimizing for the wrong unit. Buy less. Integrate better. Automate the things you can actually trust automation to do.</p>
+
+    <div class="kicker">
+      You have the data. Somewhere, in seven different consoles. The breach path is in there too — visible to none of them, obvious to all of them together.
+    </div>
+
+    <div class="author-card">
+      <div class="author-avatar">AA</div>
+      <div>
+        <div class="author-name">Ali Asgar Kanchwala</div>
+        <div class="author-role">Network Security Expert · Cloud Security · IAM · Multi-Cloud Architecture · Abu Dhabi, UAE</div>
+      </div>
+    </div>
+  </section>
+
+</article>
+</div>
+</main>
+
+<script>
+  // Reading progress
+  window.addEventListener('scroll', () => {
+    const d = document.documentElement;
+    document.getElementById('progress').style.width =
+      (d.scrollTop / (d.scrollHeight - d.clientHeight) * 100) + '%';
+  });
+
+  // Mermaid
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      darkMode: true,
+      background: '#1a1f2e',
+      primaryColor: '#252b3d',
+      primaryTextColor: '#c8d5e8',
+      primaryBorderColor: '#323a52',
+      lineColor: '#0057b8',
+      secondaryColor: '#1e2535',
+      tertiaryColor: '#0e1220',
+      edgeLabelBackground: '#1a1f2e',
+      clusterBkg: '#1e2535',
+      titleColor: '#94a3bd',
+      nodeTextColor: '#c8d5e8',
+    },
+    flowchart: { htmlLabels: true, curve: 'basis', padding: 20 },
+  });
+</script>
+
+</body>
+</html>

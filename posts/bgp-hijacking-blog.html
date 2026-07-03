@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BGP Hijacking and the Internet's Honor System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+<style>
+:root {
+  --bg:           #060a12;
+  --bg-card:      #0d1520;
+  --bg-raise:     #152030;
+  --accent:       #38bdf8;
+  --accent-dim:   #1a4a6a;
+  --accent2:      #f43f5e;
+  --danger:       #ef4444;
+  --text:         #b8d4e8;
+  --text-bright:  #e0f0fa;
+  --text-dim:     #4a6a80;
+  --border:       #1a2d40;
+  --display:      'Bebas Neue', sans-serif;
+  --body:         'Lora', serif;
+  --mono:         'Courier Prime', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.72;
+  -webkit-font-smoothing: antialiased;
+}
+
+#progress {
+  position: fixed; top: 0; left: 0;
+  height: 2px; width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  z-index: 999;
+  transition: width 0.1s linear;
+}
+
+/* ── NAV ── */
+nav {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(6,10,18,0.94);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 36px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 54px;
+}
+.nav-brand {
+  font-family: var(--display);
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+.nav-right {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+}
+
+.hero-left {
+  padding: 88px 60px 88px 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-right: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Blueprint grid lines in hero background */
+.hero-left::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(56,189,248,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56,189,248,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.hero-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent2);
+  margin-bottom: 22px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hero-tag::before {
+  content: '';
+  display: inline-block;
+  width: 18px; height: 1px;
+  background: var(--accent2);
+}
+
+.hero-title {
+  font-family: var(--display);
+  font-size: clamp(52px, 6.5vw, 88px);
+  line-height: 0.95;
+  letter-spacing: 0.03em;
+  color: var(--text-bright);
+  margin-bottom: 32px;
+  position: relative;
+}
+.hero-title .hl { color: var(--accent); }
+.hero-title .hl2 { color: var(--accent2); }
+
+.hero-sub {
+  font-family: var(--body);
+  font-size: 15.5px;
+  line-height: 1.7;
+  color: var(--text);
+  max-width: 440px;
+  margin-bottom: 44px;
+  position: relative;
+  font-style: italic;
+}
+
+.hero-stats {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  position: relative;
+  max-width: 440px;
+}
+.h-stat {
+  flex: 1;
+  padding: 14px 16px;
+  border-right: 1px solid var(--border);
+}
+.h-stat:last-child { border-right: none; }
+.h-stat-val {
+  font-family: var(--display);
+  font-size: 28px;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.h-stat-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ── HERO RIGHT: AS GRAPH ANIMATION ── */
+.hero-right {
+  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.canvas-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.c-dot { width: 10px; height: 10px; border-radius: 50%; }
+.c-dot.r { background: #ef4444; }
+.c-dot.a { background: #f59e0b; }
+.c-dot.g { background: var(--accent); }
+.canvas-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-left: 6px;
+}
+
+#bgpCanvas {
+  flex: 1;
+  display: block;
+  width: 100%;
+}
+
+.hero-legend {
+  padding: 12px 20px;
+  background: var(--bg-raise);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.hl-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.hl-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.hl-line { width: 20px; height: 2px; flex-shrink: 0; }
+
+/* ── MAIN CONTENT ── */
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 80px 32px;
+}
+
+h2 {
+  font-family: var(--display);
+  font-size: clamp(32px, 4vw, 48px);
+  letter-spacing: 0.04em;
+  line-height: 1.0;
+  color: var(--text-bright);
+  margin: 76px 0 26px;
+}
+
+h3 {
+  font-family: var(--body);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 44px 0 16px;
+  letter-spacing: 0.01em;
+}
+
+p {
+  margin-bottom: 22px;
+  font-size: 15.5px;
+  line-height: 1.75;
+}
+p:last-child { margin-bottom: 0; }
+
+strong { color: var(--text-bright); font-weight: 600; }
+
+em { color: var(--text); }
+
+code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 2px;
+  color: var(--accent);
+}
+
+/* ── DIAGRAM WRAP ── */
+.diagram-wrap {
+  margin: 48px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.dw-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 18px;
+  background: var(--bg-raise);
+  border-bottom: 1px solid var(--border);
+}
+.dw-dot { width: 8px; height: 8px; border-radius: 50%; }
+.dw-dot.r { background: #ef4444; }
+.dw-dot.a { background: #f59e0b; }
+.dw-dot.g { background: var(--accent); }
+.dw-title {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text-dim);
+  margin-left: 6px; flex: 1;
+}
+.dw-body { padding: 28px 20px; overflow-x: auto; }
+.dw-body .mermaid { display: flex; justify-content: center; }
+
+/* ── CALLOUTS ── */
+.callout {
+  margin: 36px 0; padding: 20px 24px;
+  border-left: 3px solid;
+  background: var(--bg-card);
+}
+.callout-label {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 10px; font-weight: 700;
+}
+.callout p { margin-bottom: 0; font-size: 15px; line-height: 1.65; }
+.callout.info  { border-color: var(--accent-dim); }
+.callout.info .callout-label  { color: var(--accent); }
+.callout.warn  { border-color: #92400e; }
+.callout.warn .callout-label  { color: #fbbf24; }
+.callout.danger { border-color: var(--danger); background: rgba(239,68,68,0.06); }
+.callout.danger .callout-label { color: var(--danger); }
+
+/* ── PULL QUOTE ── */
+.pull {
+  margin: 56px 0;
+  padding: 28px 32px;
+  background: var(--bg-card);
+  border-top: 2px solid var(--accent);
+  border-bottom: 1px solid var(--border);
+}
+.pull p {
+  font-family: var(--display);
+  font-size: clamp(24px, 3vw, 34px);
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  color: var(--text-bright);
+  margin: 0;
+}
+.pull p .hl2 { color: var(--accent2); }
+
+/* ── INCIDENT TIMELINE ── */
+.timeline { margin: 40px 0; }
+.tl-item {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 0;
+  margin-bottom: 0;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  background: var(--bg-card);
+}
+.tl-item:last-child { border-bottom: 1px solid var(--border); }
+.tl-date {
+  padding: 16px 18px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--bg-raise);
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  line-height: 1.4;
+}
+.tl-body {
+  padding: 14px 20px;
+}
+.tl-body strong { display: block; font-size: 14px; margin-bottom: 4px; color: var(--text-bright); }
+.tl-body p { margin: 0; font-size: 13px; color: var(--text-dim); line-height: 1.55; }
+.tl-item.critical .tl-date { color: var(--accent2); }
+.tl-item.critical .tl-body strong { color: var(--accent2); }
+
+/* ── NUMBERED LIST ── */
+.impl-list { margin: 36px 0; display: flex; flex-direction: column; gap: 12px; }
+.impl-item {
+  display: grid; grid-template-columns: 64px 1fr;
+  background: var(--bg-card); border: 1px solid var(--border); overflow: hidden;
+}
+.impl-num {
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display); font-size: 22px; letter-spacing: 0.06em;
+  color: var(--accent);
+  background: var(--bg-raise); border-right: 1px solid var(--border);
+}
+.impl-body { padding: 16px 20px; }
+.impl-body strong { display: block; font-size: 14.5px; margin-bottom: 6px; }
+.impl-body p { margin: 0; font-size: 13.5px; color: var(--text-dim); line-height: 1.6; }
+
+/* ── RPKI STATUS TABLE ── */
+.rpki-table {
+  margin: 40px 0; overflow-x: auto;
+}
+.rpki-table table {
+  width: 100%; border-collapse: collapse;
+  background: var(--bg-card); border: 1px solid var(--border);
+  font-size: 13.5px;
+}
+.rpki-table th {
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.13em; text-transform: uppercase;
+  padding: 11px 16px; background: var(--bg-raise);
+  border-bottom: 1px solid var(--border); text-align: left;
+  color: var(--text-dim);
+}
+.rpki-table td {
+  padding: 11px 16px; border-bottom: 1px solid var(--border);
+  vertical-align: middle; line-height: 1.45;
+}
+.rpki-table tr:last-child td { border-bottom: none; }
+.status-badge {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase; padding: 3px 8px; border-radius: 2px;
+  font-weight: 700;
+}
+.status-badge.good    { background: rgba(56,189,248,0.12); color: var(--accent); border: 1px solid var(--accent-dim); }
+.status-badge.partial { background: rgba(251,191,36,0.1);  color: #fbbf24;       border: 1px solid rgba(251,191,36,0.3); }
+.status-badge.poor    { background: rgba(244,63,94,0.1);   color: var(--accent2); border: 1px solid rgba(244,63,94,0.3); }
+
+/* ── CLOSING ── */
+.closing { margin-top: 80px; padding-top: 48px; border-top: 1px solid var(--border); }
+.kicker {
+  margin-top: 52px;
+  font-family: var(--display);
+  font-size: clamp(32px, 4.5vw, 52px);
+  letter-spacing: 0.04em;
+  line-height: 1.0;
+  color: var(--text-bright);
+}
+.kicker .k-accent  { color: var(--accent); }
+.kicker .k-accent2 { color: var(--accent2); }
+
+.author-card {
+  margin-top: 52px; padding: 20px 24px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  display: flex; align-items: center; gap: 18px;
+}
+.author-avatar {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--bg-raise); border: 1px solid var(--accent-dim);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display); font-size: 16px; letter-spacing: 0.05em;
+  color: var(--accent); flex-shrink: 0;
+}
+.author-name {
+  font-family: var(--display); font-size: 20px;
+  letter-spacing: 0.06em; color: var(--text-bright);
+}
+.author-role {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--text-dim); margin-top: 3px; letter-spacing: 0.04em;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 920px) {
+  .hero { grid-template-columns: 1fr; min-height: auto; }
+  .hero-left { padding: 64px 32px; border-right: none; border-bottom: 1px solid var(--border); }
+  .hero-right { height: 420px; }
+}
+@media (max-width: 640px) {
+  nav { padding: 0 20px; }
+  .hero-left { padding: 48px 20px; }
+  .container { padding: 56px 20px; }
+  .impl-item { grid-template-columns: 48px 1fr; }
+  .tl-item { grid-template-columns: 80px 1fr; }
+  .hero-stats { flex-wrap: wrap; }
+}
+
+/* ── REDUCED MOTION ── */
+@media (prefers-reduced-motion: reduce) {
+  #bgpCanvas { display: none; }
+  .hero-right::after {
+    content: 'AS-path graph animation suppressed (prefers-reduced-motion)';
+    display: flex; align-items: center; justify-content: center;
+    height: 100%; font-family: var(--mono); font-size: 11px;
+    color: var(--text-dim); padding: 40px; text-align: center;
+  }
+}
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<nav>
+  <div class="nav-brand">NETWORK SECURITY</div>
+  <div class="nav-right">BGP · RPKI · Internet Routing Security</div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-tag">Routing Security · Protocol Trust</div>
+    <h1 class="hero-title">
+      <span class="hl">BGP</span><br>
+      HIJACKING<br>
+      AND THE<br>
+      INTERNET'S<br>
+      <span class="hl2">HONOR SYSTEM</span>
+    </h1>
+    <p class="hero-sub">
+      The protocol routing all your traffic was designed in 1989, over a three-day weekend, on two napkins. It still assumes that every autonomous system on the internet is telling the truth about which IP space it owns.
+    </p>
+    <div class="hero-stats">
+      <div class="h-stat">
+        <div class="h-stat-val">900+</div>
+        <div class="h-stat-label">Route leaks / yr</div>
+      </div>
+      <div class="h-stat">
+        <div class="h-stat-val">~40%</div>
+        <div class="h-stat-label">Global RPKI coverage</div>
+      </div>
+      <div class="h-stat">
+        <div class="h-stat-val">0</div>
+        <div class="h-stat-label">Authentication in base BGP</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="canvas-bar">
+      <div class="c-dot r"></div><div class="c-dot a"></div><div class="c-dot g"></div>
+      <div class="canvas-title">AS-path topology — live route propagation</div>
+    </div>
+    <canvas id="bgpCanvas"></canvas>
+    <div class="hero-legend">
+      <div class="hl-item"><div class="hl-dot" style="background:var(--accent)"></div>Legitimate AS</div>
+      <div class="hl-item"><div class="hl-dot" style="background:var(--accent2)"></div>Rogue AS (hijacking)</div>
+      <div class="hl-item"><div class="hl-line" style="background:var(--accent)"></div>Valid route</div>
+      <div class="hl-item"><div class="hl-line" style="background:var(--accent2)"></div>Hijacked route</div>
+      <div class="hl-item"><div class="hl-dot" style="background:#fbbf24; width:6px; height:6px;"></div>Route pulse</div>
+    </div>
+  </div>
+</section>
+
+<!-- MAIN CONTENT -->
+<main class="container">
+
+  <p>In 1989, engineers from IBM and MCI needed a way to exchange routing information between their networks quickly. The "two-napkin protocol" that resulted — BGP, Border Gateway Protocol — was designed for a community small enough that mutual trust was a reasonable assumption. Thirty-five years later, that same protocol routes every packet crossing the public internet. The trust model hasn't changed.</p>
+
+  <p>BGP operates on a simple premise: if an autonomous system announces that it owns a block of IP addresses, other ASes believe it. There is no cryptographic verification of route origin in the base protocol. There is no authentication of the AS claiming to hold a prefix. When <strong>AS7007</strong> accidentally announced that it was the best path to most of the internet in 1997, every router that heard it believed it, and large chunks of the internet went dark. When <strong>Pakistan Telecom</strong> announced YouTube's prefix in 2008 and the route leaked globally, YouTube was unreachable worldwide for two hours. When a Chinese ISP announced 70,000 routes it didn't own in 2010, traffic for networks including the US military briefly flowed through Chinese infrastructure. These weren't sophisticated attacks. They required nothing more than the ability to originate a BGP announcement.</p>
+
+  <div class="callout danger">
+    <div class="callout-label">⚠ The core problem</div>
+    <p>A BGP hijack doesn't require access to your routers, your network, or your users. It requires access to <em>any</em> router with an upstream BGP peering session — and the willingness to announce a prefix you don't own. The victim doesn't need to do anything wrong. The victim's network doesn't need to be compromised. The attack happens entirely outside the victim's control plane.</p>
+  </div>
+
+  <h2>HOW BGP ACTUALLY WORKS — AND WHERE IT BREAKS</h2>
+
+  <p>BGP is a path-vector protocol. Each AS originates announcements for the IP prefixes it owns, and propagates announcements from peers after prepending its own AS number to the path. A route announcement for <code>198.51.100.0/24</code> originating from AS64496 might travel through AS64497 and AS64498 before reaching your router, arriving with the path <code>64498 64497 64496</code>. Your router picks the best path using a series of tie-breaking attributes — AS path length, local preference, MED — and installs it in the RIB.</p>
+
+  <p>The problem is that nothing in this process verifies that AS64496 is actually authorized to originate <code>198.51.100.0/24</code>. Any AS can announce any prefix. Your router will accept it if the path attributes look plausible and no explicit filter rejects it.</p>
+
+  <div class="diagram-wrap">
+    <div class="dw-bar">
+      <div class="dw-dot r"></div><div class="dw-dot a"></div><div class="dw-dot g"></div>
+      <div class="dw-title">Figure 01 — BGP prefix hijack: legitimate vs. rogue announcement</div>
+    </div>
+    <div class="dw-body">
+      <div class="mermaid">
+flowchart TD
+  subgraph Victim["Victim Network"]
+    V["AS 64496\nOwns 198.51.100.0/24\n(legitimate origin)"]
+  end
+  subgraph Rogue["Attacker"]
+    R["AS 65001\nAnnounces 198.51.100.0/24\nOR more-specific /25\n(no authorization)"]
+  end
+  subgraph Transit["Transit Providers"]
+    T1["Transit AS A"]
+    T2["Transit AS B"]
+  end
+  subgraph Peers["Internet Peers / Eyeballs"]
+    P1["Peer AS X"]
+    P2["Peer AS Y\n(your enterprise ISP)"]
+  end
+
+  V -->|"Announces /24\npath: 64496"| T1
+  R -->|"Announces /24 or /25\npath: 65001\n(more-specific wins)"| T2
+  T1 -->|"Best path: 64496"| P1
+  T2 -->|"Best path: 65001\nroute preferred if /25"| P1
+  T2 -->|"Hijacked route\ninstalled in RIB"| P2
+  P2 -.->|"Your traffic now flows\nto attacker's AS"| R
+      </div>
+    </div>
+  </div>
+
+  <p>The more-specific prefix attack is the most reliable variant. If the legitimate holder announces <code>198.51.100.0/24</code> and the attacker announces <code>198.51.100.0/25</code>, the longer prefix wins in every router's best-path selection — regardless of which announcement arrived first, regardless of AS path length. It's not a bug; it's the correct behavior of longest-prefix matching. The protocol is working exactly as designed. The design has no concept of authorization.</p>
+
+  <h3>Route leaks vs. intentional hijacks</h3>
+  <p>The industry distinguishes between accidental route leaks and intentional hijacks, but from the victim's perspective the traffic impact can be identical. Route leaks — where an AS misconfigures its policy and propagates routes it received from one peer to another, violating the expected valley-free routing model — account for the majority of BGP incidents. The 2019 incident where a small ISP in Pennsylvania leaked routes learned from Cloudflare to Verizon, which propagated them globally and affected large parts of the internet, was almost certainly accidental. It still caused significant outages.</p>
+
+  <p>Intentional hijacks — where the attacker genuinely wants to intercept, inspect, or black-hole traffic — are harder to distinguish from leaks in real time. The BGP community has historically been slow to attribute intent, which is part of why responses are slow.</p>
+
+  <h2>REAL INCIDENTS, WHAT THEY ACHIEVED, AND WHAT THEY DIDN'T</h2>
+
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-date">1997<br>AS7007</div>
+      <div class="tl-body">
+        <strong>Florida ISP Accidentally Becomes Default Route for the Internet</strong>
+        <p>A misconfigured router at AS7007 (MAI Network Services) originated routes for most of the internet's IP space. Routers globally accepted the shorter AS path. Much of the internet became unreachable for several hours. Zero malicious intent. Total impact.</p>
+      </div>
+    </div>
+    <div class="tl-item critical">
+      <div class="tl-date">2008<br>Pakistan Telecom</div>
+      <div class="tl-body">
+        <strong>YouTube Unreachable Globally for Two Hours</strong>
+        <p>Pakistan Telecom announced a more-specific prefix for YouTube's address space (attempting to comply with a government blocking order domestically). Their upstream provider PCCW propagated it globally. YouTube traffic worldwide routed to Pakistan Telecom for approximately two hours before manual intervention.</p>
+      </div>
+    </div>
+    <div class="tl-item critical">
+      <div class="tl-date">2010<br>China Telecom</div>
+      <div class="tl-body">
+        <strong>70,000 Routes Hijacked for 18 Minutes</strong>
+        <p>China Telecom originated routes for ~70,000 prefixes including US military, Senate, and commercial networks. Traffic was briefly redirected through Chinese infrastructure. The 18-minute window was sufficient for traffic analysis. Attribution as deliberate vs. accidental was never definitively established.</p>
+      </div>
+    </div>
+    <div class="tl-item critical">
+      <div class="tl-date">2018<br>Amazon Route 53</div>
+      <div class="tl-body">
+        <strong>Cryptocurrency Theft via BGP Hijack</strong>
+        <p>Attackers hijacked Amazon Route 53's DNS infrastructure via BGP to redirect users of MyEtherWallet to a phishing server. Approximately $160,000 in cryptocurrency stolen. This is the template for BGP-as-enabler-of-application-attack: the BGP hijack wasn't the end goal — it was the prerequisite for DNS redirection and credential capture.</p>
+      </div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-date">2022<br>Multiple</div>
+      <div class="tl-body">
+        <strong>Ongoing Systematic Interception Campaigns</strong>
+        <p>Researchers at the Internet Society and CAIDA continue to document dozens of suspicious hijack events annually — clusters of incidents affecting specific AS targets, durations consistent with traffic interception rather than misconfiguration, from origin ASes with no legitimate claim to the announced prefixes.</p>
+      </div>
+    </div>
+  </div>
+
+  <p>The 2018 Amazon Route 53 incident is the one practitioners should study most carefully, because it illustrates the attack surface BGP hijacking actually enables for a motivated adversary. The attacker doesn't need to inspect your encrypted traffic in transit — they redirect your DNS resolver, serve you a certificate from a CA that issues to anyone, and capture credentials at the application layer. BGP was the entry point. The payload was credential theft.</p>
+
+  <div class="pull">
+    <p>BGP HIJACKING DIDN'T STEAL THE CRYPTOCURRENCY.<br><span class="hl2">IT MOVED THE DNS RESOLVER THAT LET THEM STEAL IT.</span></p>
+  </div>
+
+  <h2>RPKI: THE INCOMPLETE ANSWER THAT'S STILL NECESSARY</h2>
+
+  <p>Resource Public Key Infrastructure is the closest thing the internet has to a route origin authorization system. An RPKI Route Origin Authorization (ROA) is a cryptographically signed statement that says: AS X is authorized to originate prefix Y. Relying parties — routers configured to validate RPKI — can check incoming BGP announcements against the published ROA database and drop or de-prefer routes whose origin AS doesn't match a valid ROA.</p>
+
+  <p>The problem is coverage and enforcement. An RPKI ROA only protects a prefix if: (a) the legitimate holder has published a ROA, and (b) the routers processing BGP announcements for that prefix are performing RPKI validation in "drop-invalid" mode rather than just marking routes as invalid and still accepting them.</p>
+
+  <div class="rpki-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Region / Tier</th>
+          <th>ROA Publication Rate (approx.)</th>
+          <th>RPKI Enforcement at Major Carriers</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Europe (RIPE NCC)</td>
+          <td>~70% of announced prefixes</td>
+          <td>Strong — most Tier-1 carriers drop invalid</td>
+          <td><span class="status-badge good">Strong</span></td>
+        </tr>
+        <tr>
+          <td>Americas (ARIN)</td>
+          <td>~45% of announced prefixes</td>
+          <td>Improving — major carriers filtering invalid routes</td>
+          <td><span class="status-badge partial">Partial</span></td>
+        </tr>
+        <tr>
+          <td>Asia-Pacific (APNIC)</td>
+          <td>~55% of announced prefixes</td>
+          <td>Inconsistent — significant variance by carrier</td>
+          <td><span class="status-badge partial">Partial</span></td>
+        </tr>
+        <tr>
+          <td>MENA (RIPE / ARIN overlap)</td>
+          <td>~30–40% of announced prefixes</td>
+          <td>Limited — most regional carriers mark-but-don't-drop</td>
+          <td><span class="status-badge poor">Weak</span></td>
+        </tr>
+        <tr>
+          <td>Global Tier-1 aggregate</td>
+          <td>~40% coverage overall</td>
+          <td>Improving, but 60% of prefixes unprotected</td>
+          <td><span class="status-badge partial">Partial</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The coverage gap matters more than it first appears. RPKI can only protect a prefix from hijacking if the networks that would propagate the rogue announcement are filtering on RPKI validity. If 60% of prefixes have no ROA, a rogue announcement for those prefixes faces no cryptographic challenge. And even for the 40% with valid ROAs, a carrier not enforcing "invalid = reject" will happily propagate the hijacked route anyway.</p>
+
+  <p>RPKI also doesn't address route leaks at all. A ROA confirms that an AS is authorized to <em>originate</em> a prefix, but says nothing about whether an AS is authorized to <em>transit</em> it. BGPsec — the extension that would sign the full AS path and detect route leaks — exists on paper and has essentially zero deployment. The operational complexity is formidable and the incremental deployment incentive is weak: BGPsec only provides protection if every AS in the path has deployed it.</p>
+
+  <div class="callout warn">
+    <div class="callout-label">⚑ Operational reality</div>
+    <p>I've spoken to network teams managing provider-assigned address space in the UAE who had never heard of RPKI, let alone published a ROA. Their upstream providers mark-but-don't-drop. Their prefixes are fully hijackable, their upstreams will propagate the hijack, and there is no operational mechanism today to stop it quickly once it's in the global routing table.</p>
+  </div>
+
+  <h2>WHAT AN ENTERPRISE CAN ACTUALLY DO</h2>
+
+  <p>Let's be direct about scope. If you're an enterprise consuming internet transit from one or two ISPs, you don't control BGP in any meaningful way. You're not a network operator in the sense that you're not peering with other ASes, you're not publishing ROAs in your own right (unless you hold provider-independent address space), and you're not configuring RPKI enforcement on transit routers. The problem is largely upstream of you. That's not a reason to do nothing — it's a reason to be specific about what actually helps.</p>
+
+  <div class="impl-list">
+    <div class="impl-item">
+      <div class="impl-num">01</div>
+      <div class="impl-body">
+        <strong>Publish ROAs for any PI address space you hold</strong>
+        <p>If you hold provider-independent (PI) IPv4 or IPv6 space through RIPE, ARIN, or APNIC, publish ROAs for your prefixes today. This takes under an hour in the RIPE NCC portal or equivalent. It doesn't prevent all hijacks, but it creates a cryptographic claim that cooperative carriers will honor. Organizations in the UAE with PI space via RIPE have no excuse not to have ROAs.</p>
+      </div>
+    </div>
+    <div class="impl-item">
+      <div class="impl-num">02</div>
+      <div class="impl-body">
+        <strong>Ask your upstream ISP about RPKI enforcement policy explicitly</strong>
+        <p>When you next renew or renegotiate a transit contract, ask whether they drop RPKI-invalid routes or merely mark them. "We support RPKI" means nothing if they're in mark-not-drop mode. You want: invalid routes rejected at the origin, before they can propagate. Make it a contract requirement if you can. Major carriers globally — Deutsche Telekom, AT&T, NTT — now drop invalid by default. Regional carriers are variable.</p>
+      </div>
+    </div>
+    <div class="impl-item">
+      <div class="impl-num">03</div>
+      <div class="impl-body">
+        <strong>Monitor your own prefixes for unexpected route origin changes</strong>
+        <p>Services like <strong>Cloudflare Radar</strong>, <strong>BGPmon</strong>, <strong>RIPE Stat</strong>, and <strong>ThousandEyes BGP monitoring</strong> will alert you when your prefixes appear to be originating from an unexpected AS. This doesn't prevent the hijack, but it compresses your response time from "noticed by a customer complaining" to "alerted within minutes." That's the difference between a two-hour YouTube-style outage and a 15-minute containment.</p>
+      </div>
+    </div>
+    <div class="impl-item">
+      <div class="impl-num">04</div>
+      <div class="impl-body">
+        <strong>Don't assume application-layer encryption protects you from BGP hijacking</strong>
+        <p>TLS protects data in transit against interception, but doesn't protect against the BGP-enabled DNS redirection attack demonstrated in the 2018 Amazon incident. Implement DNSSEC for your authoritative zones, use certificate pinning where operationally feasible for critical services, and consider DNS-over-HTTPS or DNS-over-TLS for your resolvers — these raise the cost of the DNS-manipulation attacks that BGP hijacking enables.</p>
+      </div>
+    </div>
+    <div class="impl-item">
+      <div class="impl-num">05</div>
+      <div class="impl-body">
+        <strong>If you operate internet-facing infrastructure, engage MANRS</strong>
+        <p>Mutually Agreed Norms for Routing Security (MANRS) is the industry initiative for network operators to commit to filtering, anti-spoofing, coordination, and global validation. If your organization operates AS infrastructure — even a small enterprise AS — MANRS membership signals to peers that you've implemented the basic hygiene. The filtering commitment matters most: agreeing to filter route announcements from your customers means rogue announcements from your downstream don't propagate upstream.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="diagram-wrap">
+    <div class="dw-bar">
+      <div class="dw-dot r"></div><div class="dw-dot a"></div><div class="dw-dot g"></div>
+      <div class="dw-title">Figure 02 — Defense layers against BGP hijacking (attacker perspective)</div>
+    </div>
+    <div class="dw-body">
+      <div class="mermaid">
+flowchart LR
+  A["Attacker\nannounces\nrogue prefix"] --> B{"ROA exists\nfor prefix?"}
+  B -->|"No ROA\n(~60% of internet)"| C["Route propagates\nunchallenged"]
+  B -->|"ROA exists"| D{"Upstream\nenforces\nRPKI?"}
+  D -->|"Mark only\n(not drop)"| C
+  D -->|"Drop invalid\n✓"| E["Route rejected\nat originating\ncarrier"]
+  C --> F{"Victim\nmonitoring\nBGP?"| }
+  F -->|"No monitoring"| G["Hijack succeeds\nDetection: hours/days"]
+  F -->|"BGPmon / Radar\nalert ✓"| H["Rapid response\nISP escalation\n< 15 min"]
+  E --> I["Hijack contained\nbefore propagation"]
+      </div>
+    </div>
+  </div>
+
+  <h2>THE HONEST PROGNOSIS</h2>
+
+  <p>BGPsec — full path signing — would solve the route-leak problem that RPKI doesn't address. It also requires every AS in every path to deploy it simultaneously for it to provide meaningful protection, which is a coordination problem that makes IPv6 adoption look straightforward. The IETF standardized BGPsec in 2017. Deployment remains negligible. Don't build a security posture that depends on BGPsec being deployed at scale in any operationally relevant timeframe.</p>
+
+  <p>What is actually improving: RPKI coverage, slowly but measurably. Major Tier-1 carriers dropping invalid routes. Tooling for route origin monitoring becoming accessible to enterprises that don't operate their own BGP infrastructure. The <strong>MANRS</strong> participant list growing. None of this makes BGP secure. It makes large-scale, unsophisticated hijacks harder to sustain, because more routers will reject them and more victims will detect them faster.</p>
+
+  <p>The underlying trust architecture hasn't changed and won't change in any timeframe that matters to your current security posture. The internet still routes on the honor system. The question is whether enough of the large network operators have enough shared interest in not breaking each other's networks to make the honor system mostly work, most of the time. That's a sociological answer, not a technical one. It has held, imperfectly, for 35 years.</p>
+
+  <div class="callout info">
+    <div class="callout-label">ℹ UAE / Regional context</div>
+    <p>TDRA (Telecommunications and Digital Government Regulatory Authority) and the NCA's routing security requirements for licensed telecom operators in the UAE mandate "best practices" for BGP security, but enforcement on RPKI adoption specifically has been limited. ETISALAT (e&amp;) and du have made progress on RPKI, but regional transit paths through the GCC frequently traverse carriers without RPKI enforcement. For enterprises with PI space registered under RIPE NCC (as most UAE entities with PI addresses would be), publishing ROAs is straightforward and takes no upstream coordination.</p>
+  </div>
+
+  <!-- CLOSING -->
+  <div class="closing">
+    <p style="font-size:15.5px;line-height:1.75;">BGP was not designed to be secure. It was designed to work, quickly, between a small group of networks that trusted each other because they knew each other. The internet has five orders of magnitude more ASes than it did in 1989, and the trust assumption has never been revisited at the architectural level.</p>
+
+    <p style="font-size:15.5px;line-height:1.75;margin-top:20px;">This is not a problem your enterprise security team can fix. It's a problem your enterprise security team has to account for — by monitoring the prefixes that matter to you, by ensuring your ISP is filtering, and by not assuming that because traffic takes the right path today, it will tomorrow.</p>
+
+    <div class="kicker">
+      YOU SECURED YOUR PERIMETER.<br>
+      <span class="k-accent">THE ROUTE TO IT</span><br>
+      <span class="k-accent2">IS SOMEONE ELSE'S HONOR.</span>
+    </div>
+
+    <div class="author-card">
+      <div class="author-avatar">AK</div>
+      <div>
+        <div class="author-name">Ali Asgar Kanchwala</div>
+        <div class="author-role">15+ years · BGP & Routing Security · Network Architecture · Internet Infrastructure · Abu Dhabi, UAE</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// Reading progress bar
+window.addEventListener('scroll', () => {
+  const d = document.documentElement;
+  document.getElementById('progress').style.width =
+    (d.scrollTop / (d.scrollHeight - d.clientHeight) * 100) + '%';
+});
+
+// AS-path graph canvas animation
+(function() {
+  const canvas = document.getElementById('bgpCanvas');
+  if (!canvas) return;
+
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width  = rect.width;
+    canvas.height = canvas.parentElement.clientHeight - 52 - 48; // minus bars
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const ctx = canvas.getContext('2d');
+
+  // Colors
+  const C_BG      = '#0d1520';
+  const C_ACCENT  = '#38bdf8';
+  const C_ROGUE   = '#f43f5e';
+  const C_DIM     = '#1a2d40';
+  const C_TEXT    = '#4a6a80';
+  const C_BRIGHT  = '#b8d4e8';
+
+  // Node definitions (relative positions 0-1)
+  const nodesDef = [
+    { id: 'src',   label: 'AS 64496\nVICTIM',  rx: 0.12, ry: 0.50, color: C_ACCENT,  size: 22 },
+    { id: 't1',    label: 'AS 1299\nTelia',     rx: 0.32, ry: 0.25, color: C_ACCENT,  size: 16 },
+    { id: 't2',    label: 'AS 3356\nLumen',     rx: 0.32, ry: 0.75, color: C_ACCENT,  size: 16 },
+    { id: 'p1',    label: 'AS 174\nCogent',     rx: 0.55, ry: 0.20, color: C_ACCENT,  size: 16 },
+    { id: 'p2',    label: 'AS 6461\nZayo',      rx: 0.55, ry: 0.50, color: C_ACCENT,  size: 16 },
+    { id: 'p3',    label: 'AS 1273\nVodafone',  rx: 0.55, ry: 0.80, color: C_ACCENT,  size: 16 },
+    { id: 'dst',   label: 'AS 15169\nGoogle',   rx: 0.80, ry: 0.35, color: C_ACCENT,  size: 18 },
+    { id: 'ent',   label: 'AS 65100\nYOUR ISP', rx: 0.80, ry: 0.72, color: C_ACCENT,  size: 18 },
+    { id: 'rogue', label: 'AS 65001\nROGUE',    rx: 0.32, ry: 0.50, color: C_ROGUE,   size: 18, rogue: true },
+  ];
+
+  // Edges: [from, to, valid]
+  const edgesDef = [
+    ['src',   't1',    true],
+    ['src',   't2',    true],
+    ['t1',    'p1',    true],
+    ['t1',    'p2',    true],
+    ['t2',    'p2',    true],
+    ['t2',    'p3',    true],
+    ['p1',    'dst',   true],
+    ['p2',    'dst',   true],
+    ['p2',    'ent',   true],
+    ['p3',    'ent',   true],
+    // Rogue edges (appear later)
+    ['rogue', 't1',    false],
+    ['rogue', 't2',    false],
+    ['rogue', 'p2',    false],
+    ['rogue', 'ent',   false],
+  ];
+
+  let nodes = [];
+  let edges = [];
+  let pulses = [];
+  let rogueVisible = false;
+  let rogueAlpha = 0;
+  let frame = 0;
+  let phase = 'normal'; // normal → intrusion → hijack → reset
+
+  function buildNodes() {
+    const w = canvas.width, h = canvas.height;
+    nodes = nodesDef.map(n => ({
+      ...n,
+      x: n.rx * w,
+      y: n.ry * h,
+    }));
+  }
+
+  function getNode(id) { return nodes.find(n => n.id === id); }
+
+  function buildEdges() {
+    edges = edgesDef.map(([a, b, valid]) => ({
+      from: a, to: b, valid,
+      rogue: !valid,
+    }));
+  }
+
+  function spawnPulse(fromId, toId, color, delay) {
+    const f = getNode(fromId), t = getNode(toId);
+    if (!f || !t) return;
+    pulses.push({ fx: f.x, fy: f.y, tx: t.x, ty: t.y, t: 0, color, delay: delay || 0, active: false });
+  }
+
+  function spawnNormalPulses() {
+    const validEdges = edgesDef.filter(e => e[2]);
+    validEdges.forEach(([a, b], i) => {
+      spawnPulse(a, b, C_ACCENT, i * 12);
+    });
+  }
+
+  function spawnRoguePulses() {
+    const rogueEdges = edgesDef.filter(e => !e[2]);
+    rogueEdges.forEach(([a, b], i) => {
+      spawnPulse(a, b, C_ROGUE, i * 8);
+    });
+  }
+
+  function drawNode(n, alpha) {
+    ctx.save();
+    ctx.globalAlpha = alpha !== undefined ? alpha : 1;
+
+    // Glow
+    const grd = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.size * 2.5);
+    grd.addColorStop(0, n.color + '33');
+    grd.addColorStop(1, 'transparent');
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.size * 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = grd;
+    ctx.fill();
+
+    // Circle
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.size, 0, Math.PI * 2);
+    ctx.fillStyle = C_BG;
+    ctx.fill();
+    ctx.strokeStyle = n.color;
+    ctx.lineWidth = n.rogue ? 2.5 : 1.5;
+    if (n.rogue) {
+      ctx.setLineDash([4, 3]);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Label
+    const lines = n.label.split('\n');
+    ctx.fillStyle = n.color;
+    ctx.font = `700 9px 'Courier Prime', monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const lineH = 11;
+    const startY = n.y - ((lines.length - 1) * lineH) / 2;
+    lines.forEach((l, i) => {
+      ctx.fillText(l, n.x, startY + i * lineH);
+    });
+
+    ctx.restore();
+  }
+
+  function drawEdge(fromId, toId, color, alpha) {
+    const f = getNode(fromId), t = getNode(toId);
+    if (!f || !t) return;
+    ctx.save();
+    ctx.globalAlpha = alpha !== undefined ? alpha : 0.25;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    if (color === C_ROGUE) ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(f.x, f.y);
+    ctx.lineTo(t.x, t.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  function drawPulse(p) {
+    if (!p.active) return;
+    const x = p.fx + (p.tx - p.fx) * p.t;
+    const y = p.fy + (p.ty - p.fy) * p.t;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 10;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawPhaseLabel() {
+    const labels = {
+      normal:    { text: 'NORMAL ROUTING — legitimate path active', color: C_ACCENT },
+      intrusion: { text: 'ROGUE AS APPEARING — announcing unauthorized prefix', color: '#fbbf24' },
+      hijack:    { text: '⚠ BGP HIJACK IN PROGRESS — traffic redirected', color: C_ROGUE },
+      reset:     { text: 'RESETTING...', color: C_TEXT },
+    };
+    const l = labels[phase];
+    if (!l) return;
+    ctx.save();
+    ctx.font = `700 9px 'Courier Prime', monospace`;
+    ctx.fillStyle = l.color;
+    ctx.globalAlpha = 0.85;
+    ctx.textAlign = 'left';
+    ctx.fillText('// ' + l.text, 14, canvas.height - 14);
+    ctx.restore();
+  }
+
+  let phaseTick = 0;
+  const NORMAL_DURATION  = 200;
+  const INTRUDE_DURATION = 80;
+  const HIJACK_DURATION  = 220;
+  const RESET_DURATION   = 40;
+
+  function tick() {
+    buildNodes(); // re-compute on each frame so resize works
+
+    // Clear
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Background grid
+    ctx.save();
+    ctx.strokeStyle = 'rgba(56,189,248,0.04)';
+    ctx.lineWidth = 1;
+    const gsize = 36;
+    for (let x = 0; x < canvas.width; x += gsize) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += gsize) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Phase logic
+    phaseTick++;
+    if (phase === 'normal' && phaseTick > NORMAL_DURATION) {
+      phase = 'intrusion'; phaseTick = 0; rogueVisible = true;
+    } else if (phase === 'intrusion' && phaseTick > INTRUDE_DURATION) {
+      phase = 'hijack'; phaseTick = 0; spawnRoguePulses();
+    } else if (phase === 'hijack' && phaseTick > HIJACK_DURATION) {
+      phase = 'reset'; phaseTick = 0;
+    } else if (phase === 'reset' && phaseTick > RESET_DURATION) {
+      phase = 'normal'; phaseTick = 0;
+      rogueVisible = false; rogueAlpha = 0;
+      pulses = []; spawnNormalPulses();
+    }
+
+    // Rogue fade
+    if (rogueVisible && rogueAlpha < 1) rogueAlpha = Math.min(1, rogueAlpha + 0.04);
+    if (!rogueVisible && rogueAlpha > 0) rogueAlpha = Math.max(0, rogueAlpha - 0.06);
+
+    // Draw valid edges
+    edgesDef.filter(e => e[2]).forEach(([a, b]) => drawEdge(a, b, C_ACCENT, 0.18));
+    // Draw rogue edges
+    if (rogueAlpha > 0) {
+      edgesDef.filter(e => !e[2]).forEach(([a, b]) => drawEdge(a, b, C_ROGUE, rogueAlpha * 0.35));
+    }
+
+    // Update and draw pulses
+    pulses.forEach(p => {
+      if (p.delay > 0) { p.delay--; return; }
+      p.active = true;
+      p.t += 0.016;
+      if (p.t > 1) p.t = 0;
+      drawPulse(p);
+    });
+
+    // Draw valid nodes
+    nodesDef.filter(n => !n.rogue).forEach(n => {
+      const node = getNode(n.id);
+      if (node) drawNode(node);
+    });
+
+    // Draw rogue node
+    if (rogueAlpha > 0) {
+      const rogue = getNode('rogue');
+      if (rogue) drawNode(rogue, rogueAlpha);
+    }
+
+    drawPhaseLabel();
+    frame++;
+    requestAnimationFrame(tick);
+  }
+
+  buildNodes();
+  buildEdges();
+  spawnNormalPulses();
+  requestAnimationFrame(tick);
+})();
+</script>
+
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    darkMode: true,
+    background: '#0d1520',
+    primaryColor: '#152030',
+    primaryTextColor: '#b8d4e8',
+    primaryBorderColor: '#1a2d40',
+    lineColor: '#38bdf8',
+    secondaryColor: '#1a2d40',
+    tertiaryColor: '#060a12',
+    edgeLabelBackground: '#0d1520',
+    clusterBkg: '#0f1e2e',
+    titleColor: '#e0f0fa',
+    nodeTextColor: '#b8d4e8',
+  },
+  flowchart: { htmlLabels: true, curve: 'basis', padding: 20 },
+});
+</script>
+
+</body>
+</html>
