@@ -41,6 +41,14 @@ const blogPosts = [
     "readTime": "3 min read"
   },
   {
+    "slug": "../posts/securing-the-data-pipeline-network-architecture-for-distributed-ai-clusters",
+    "title": "Securing the Data Pipeline: Network Architecture for Distributed AI Clusters",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "4 min read"
+  },
+  {
     "slug": "../posts/securing-the-control-plane-preventing-resource-exhaustion-attacks-on-ospf-and-bgp-daemons",
     "title": "Securing the Control Plane: Preventing Resource Exhaustion",
     "tag": "Security",
