@@ -396,6 +396,33 @@ footer {
 @media (prefers-reduced-motion: reduce) {
   .status-pulse, .td-step.now .td-dot { animation: none; }
 }
+.update-banner {
+  background: var(--blue-light);
+  border-top: 3px solid var(--blue);
+  border-bottom: 1px solid #c8d8ee;
+  padding: 20px 32px;
+}
+.update-inner {
+  max-width: 740px;
+  margin: 0 auto;
+}
+.update-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--blue-dim);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.update-banner p {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  margin: 0;
+}
+.update-banner p strong { color: var(--ink); }
+
 </style>
 </head>
 <body>
@@ -408,9 +435,9 @@ footer {
   <p class="hero-sub">It can find security bugs humans miss. It also got a government to personally shut it off. Here's the whole story, from what it actually is to why it isn't sitting on your screen right now.</p>
 
   <div class="status-strip">
-    <span class="status-pulse"></span>
-    <span class="status-text"><strong>Current status:</strong> Mythos 5 and its public sibling Fable 5 remain suspended worldwide under a US government order. Anthropic says it's working to restore access; no date is confirmed.</span>
-    <span class="status-date">Last checked · Jun 26, 2026</span>
+    <span class="status-pulse" style="background:#2e6b4f"></span>
+    <span class="status-text"><strong>Current status:</strong> Fable 5 restored globally July 1. Mythos 5 restored to vetted US Project Glasswing organizations only. New safety classifier blocks the flagged jailbreak in &gt;99% of cases.</span>
+    <span class="status-date">Updated · Jul 8, 2026</span>
   </div>
 
   <div class="timeline-dots">
@@ -434,14 +461,32 @@ footer {
       <div class="td-date">Jun 12</div>
       <div class="td-label">Gov't orders suspension</div>
     </div>
-    <div class="td-step now">
+    <div class="td-step done">
       <div class="td-dot"></div>
       <div class="td-date">Now</div>
       <div class="td-label">Still offline, talks ongoing</div>
     </div>
+    <div class="td-step done">
+      <div class="td-dot"></div>
+      <div class="td-date">Jun 30</div>
+      <div class="td-label">Controls lifted</div>
+    </div>
+    <div class="td-step done">
+      <div class="td-dot"></div>
+      <div class="td-date">Jul 1</div>
+      <div class="td-label">Fable 5 restored globally</div>
+    </div>
   </div>
 </header>
 
+<!-- ══════════════ UPDATE BANNER ══════════════ -->  
+<div class="update-banner">
+  <div class="update-inner">
+    <div class="update-label">Updated · July 8, 2026</div>
+    <p>Both models are back. The US Commerce Department lifted its export-control directive on June 30, and Fable 5 returned globally on July 1 — 19 days after it went dark. The story below was written during the suspension and is preserved as-is, since it captures how the situation looked in real time. What's new: Anthropic has confirmed the jailbreak report that triggered the shutdown came from Amazon researchers, whose CEO flagged it to federal authorities. Their own post-incident assessment found the technique didn't expose any capability unique to Mythos — the same bypass worked on several other frontier models. A new safety classifier now blocks it in over 99% of cases. Fable 5 is publicly available again on all platforms. Mythos 5 remains restricted to vetted US organizations under Project Glasswing.</p>
+  </div>
+</div>
+  
 <!-- ══════════════ ARTICLE ══════════════ -->
 <article class="article">
 
