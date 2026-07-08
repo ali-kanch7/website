@@ -222,7 +222,7 @@ const blogPosts = [
     "tag": "Security",
     "excerpt": "Read the latest article.",
     "date": "July 2026",
-    "readTime": "19 min read"
+    "readTime": "20 min read"
   },
   {
     "slug": "../posts/bgp-hijacking-blog",
