@@ -41,6 +41,14 @@ const blogPosts = [
     "readTime": "3 min read"
   },
   {
+    "slug": "../posts/shadow-api-discovery-using-network-telemetry-to-map-unfiltered-llm-endpoints",
+    "title": "Shadow API Discovery: Mapping Unfiltered LLM Endpoints",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "3 min read"
+  },
+  {
     "slug": "../posts/securing-the-data-pipeline-network-architecture-for-distributed-ai-clusters",
     "title": "Securing the Data Pipeline: Network Architecture for Distributed AI Clusters",
     "tag": "Security",
