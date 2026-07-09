@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadow API Discovery: Mapping Unfiltered LLM Endpoints</title>
+    <script type='module'>
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({startOnLoad:true});
+    </script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        h1, h2 { color: #1a1a1a; }
+        pre.mermaid { background: #f4f4f4; padding: 20px; border-radius: 8px; }
+        .highlight { background: #fff3cd; padding: 2px 4px; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f8f8f8; }
+        .summary-box { background: #f0f7ff; border-left: 5px solid #007bff; padding: 20px; margin-top: 40px; }
+    </style>
+</head>
+<body>
+
+    <h1>Shadow API Discovery: Using Network Telemetry to Map Unfiltered LLM Endpoints</h1>
+
+    <p>Large Language Models are like high-performance engines. They’re powerful, they’re fast, and everyone in the organization wants to hook them up to their own project. The problem? When developers spin up these inference servers without telling the security team, they create "Shadow APIs."</p>
+
+    <p>These are undocumented, unmonitored endpoints. They bypass your WAF, they ignore your authentication layers, and they are essentially open doors for data exfiltration or unauthorized model usage. If you can't see them, you can't secure them.</p>
+
+    <h2>The Passive Observability Layer</h2>
+
+    <p>You don't want to clutter your application code with security agents. Instead, you look at the network. By placing an observability layer between your service mesh and your infrastructure boundaries, you can watch the traffic flow without touching the application logic.</p>
+
+    <p>We use eBPF probes—think of these as tiny, invisible sensors attached to the kernel—to capture L7 traffic. This gives us raw metadata: source IPs, payload entropy, and TLS SNI headers. We feed this into a normalization engine to turn chaotic packet data into structured, readable intelligence.</p>
+
+    <pre class="mermaid">
+    graph TD
+        A[Capture Packet Stream] --> B{Is Inference Server?}
+        B -- No --> C[Drop Packet]
+        B -- Yes --> D[Analyze Headers/Entropy]
+        D --> E{Authenticated?}
+        E -- Yes --> F[Log as Authorized]
+        E -- No --> G[Flag as Shadow API Candidate]
+        G --> H[Trigger Security Alert]
+    </pre>
+
+    <h2>Filtering the Noise</h2>
+
+    <p>Not every request to an inference server is a security threat. To find the "Shadow" ones, we look for specific fingerprints. LLM traffic is distinct. It’s "chatty." It uses Server-Sent Events (SSE) to stream tokens, and the payload entropy is significantly higher than your standard REST CRUD operations.</p>
+
+    <p>We perform a gap analysis. We compare the traffic source against your Identity Provider logs. If a request hits the model but lacks a valid JWT or API key, you’ve found your shadow. It’s a simple logic: if the traffic is flowing but the registry is empty, you have a problem.</p>
+
+    <h2>The Technical Hurdles</h2>
+
+    <p>It sounds clean on paper, but the network is messy. Here is how we handle the friction:</p>
+
+    <table>
+        <tr>
+            <th>Challenge</th>
+            <th>Mitigation</th>
+        </tr>
+        <tr>
+            <td>Encrypted Traffic</td>
+            <td>Hook into SSL_read/write via eBPF before encryption.</td>
+        </tr>
+        <tr>
+            <td>High Throughput</td>
+            <td>Use metadata-only analysis or 1:1000 sampling.</td>
+        </tr>
+        <tr>
+            <td>Dynamic Endpoints</td>
+            <td>Use fuzzy path matching instead of exact strings.</td>
+        </tr>
+    </table>
+
+    <h2>Summary</h2>
+    <div class="summary-box">
+        <p><strong>The Bottom Line:</strong> Shadow APIs are a governance failure, not a technical one. To stop them, you need to stop relying on manual documentation and start relying on automated network telemetry.</p>
+        <ul>
+            <li>Deploy eBPF probes to watch traffic at the kernel level.</li>
+            <li>Flag traffic that lacks valid authentication tokens.</li>
+            <li>Automate the reconciliation between network traffic and your API registry.</li>
+        </ul>
+    </div>
+
+</body>
+</html>
