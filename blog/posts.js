@@ -65,6 +65,14 @@ const blogPosts = [
     "readTime": "4 min read"
   },
   {
+    "slug": "../posts/prompt-injection-at-the-network-layer-why-traditional-idps-fails-to-stop-llm-vulnerabilities",
+    "title": "Prompt Injection at the Network Layer? Why Traditional IDPS Fails",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "4 min read"
+  },
+  {
     "slug": "../posts/part-6-limits-and-risks",
     "title": "Where This Actually Goes: Limits, Risks, and the Honest Unknowns — The AI Universe, Part 6",
     "tag": "Security",
