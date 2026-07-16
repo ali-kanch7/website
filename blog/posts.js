@@ -17,6 +17,14 @@ const blogPosts = [
     "readTime": "22 min read"
   },
   {
+    "slug": "../posts/the-myth-of-the-single-pane-of-glass-surviving-multi-vendor-firewall-management",
+    "title": "The Myth of the \"Single Pane of Glass\"",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "4 min read"
+  },
+  {
     "slug": "../posts/the-hidden-risks-of-gitops-in-network-security-protecting-your-state-files",
     "title": "The Hidden Risks of GitOps in Network Security",
     "tag": "Security",
