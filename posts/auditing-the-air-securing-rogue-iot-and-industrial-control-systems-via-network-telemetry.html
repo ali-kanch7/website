@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditing the Air: Securing Rogue IoT and ICS</title>
+    <script type='module'>
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({startOnLoad:true});
+    </script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        h1, h2, h3 { color: #1a1a1a; }
+        .mermaid { background: #f4f4f9; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+        th { background-color: #f8f8f8; }
+        .summary-box { background: #eef6ff; padding: 20px; border-left: 5px solid #007bff; margin-top: 40px; }
+        code { background: #f0f0f0; padding: 2px 4px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <h1>Auditing the Air: Securing Rogue IoT and ICS</h1>
+
+    <p>Your network is like a house. You lock the front door, install cameras, and keep the windows shut. But what happens when someone leaves a side door open, or worse, a rogue device just appears in the living room? In modern enterprise and industrial environments, "Shadow IoT" and unmanaged Industrial Control Systems (ICS) are those uninvited guests. They bypass your security perimeters, speak proprietary languages, and usually don't leave logs behind.</p>
+
+    <p>If you try to scan these devices with traditional active tools, you risk crashing them. It’s like trying to check the oil in a car while it’s driving down the highway at 70 mph. Instead, we need to "Audit the Air"—listening to the network traffic passively to see who is talking, what they’re saying, and whether they belong there.</p>
+
+    <h2>The Passive Monitoring Fabric</h2>
+
+    <p>To secure these assets without breaking them, you need a non-intrusive monitoring fabric. Think of this as a digital stethoscope. You aren't injecting traffic or poking the devices; you are simply listening to the heartbeat of the network.</p>
+
+    <p>You start by placing hardware TAPs or mirrored switch ports at the IT/OT convergence layer. From there, you feed that traffic into a collection engine—like Zeek or Suricata—to strip away the noise and extract metadata. Finally, a behavioral engine acts as the brain, comparing what it sees against a baseline of "normal" behavior.</p>
+
+    <pre class="mermaid">
+    graph TD
+        A[Packet Ingress] --> B{In CMDB?}
+        B -- Yes --> C[Update Heartbeat]
+        B -- No --> D[Flag as Rogue]
+        D --> E[Extract Fingerprint]
+        E --> F{Industrial Behavior?}
+        F -- Yes --> G[DPI Analysis]
+        F -- No --> H[IT Anomaly Detection]
+        G --> I[Alert/Remediate]
+        H --> I
+    </pre>
+
+    <h2>From Detection to Identity</h2>
+
+    <p>Identifying a rogue device is a game of deduction. You don't always need to see the full packet content. Often, metadata tells the whole story. We look at DHCP fingerprints to see how a device requests an IP address, or we analyze inter-arrival times to distinguish between a PLC that polls every 500ms and a camera streaming video.</p>
+
+    <p>When a device shows up that isn't in your inventory, the system flags it. If it starts communicating with an unauthorized external IP—a classic sign of a command-and-control beacon—or tries to send a "Write" command to a PLC it shouldn't be touching, you have your smoking gun.</p>
+
+    <table>
+        <tr>
+            <th>Challenge</th>
+            <th>Mitigation</th>
+        </tr>
+        <tr>
+            <td>Encrypted Traffic</td>
+            <td>Use JA3/JA3S fingerprinting</td>
+        </tr>
+        <tr>
+            <td>Proprietary Protocols</td>
+            <td>Apply heuristic entropy analysis</td>
+        </tr>
+        <tr>
+            <td>Network Latency</td>
+            <td>Use passive TAPs for zero impact</td>
+        </tr>
+    </table>
+
+    <h2>Strategic Implementation</h2>
+
+    <p>Don't try to boil the ocean. Start by placing sensors at the chokepoints—the gateways between your enterprise network and your control zones. Focus on metadata rather than full packet capture; it’s cheaper, faster, and keeps your storage costs from exploding. Most importantly, integrate this data with your existing Network Access Control (NAC) systems. Visibility is great, but the ability to automatically isolate a rogue device is what actually keeps the lights on.</p>
+
+    <div class="summary-box">
+        <h3>Actionable Summary</h3>
+        <p>Stop active scanning in sensitive environments. Deploy passive TAPs to capture metadata, use behavioral baselining to identify anomalies, and integrate your telemetry with NAC for automated isolation. Focus on the "who" and "what" of your network traffic to eliminate the blind spots created by unmanaged IoT.</p>
+    </div>
+
+</body>
+</html>
