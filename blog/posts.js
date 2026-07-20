@@ -263,5 +263,13 @@ const blogPosts = [
     "excerpt": "Read the latest article.",
     "date": "July 2026",
     "readTime": "3 min read"
+  },
+  {
+    "slug": "../posts/auditing-the-air-securing-rogue-iot-and-industrial-control-systems-via-network-telemetry",
+    "title": "Auditing the Air: Securing Rogue IoT and ICS",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "4 min read"
   }
 ];
