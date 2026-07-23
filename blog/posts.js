@@ -177,6 +177,14 @@ const blogPosts = [
     "readTime": "4 min read"
   },
   {
+    "slug": "../posts/hardware-lifecycle-security-decommissioning-enterprise-switches-without-leaking-cryptographic-keys",
+    "title": "Hardware Lifecycle Security: Decommissioning Switches",
+    "tag": "Security",
+    "excerpt": "Read the latest article.",
+    "date": "July 2026",
+    "readTime": "4 min read"
+  },
+  {
     "slug": "../posts/east-west-traffic-blog",
     "title": "The Firewall That's Watching the Wrong Door — East-West Traffic Security",
     "tag": "Security",
