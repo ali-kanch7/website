@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hardware Lifecycle Security: Decommissioning Switches</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        h1, h2 { color: #1a1a1a; }
+        code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 4px; font-family: monospace; }
+        .mermaid { background: #fff; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; margin: 2rem 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f8f8f8; }
+        .summary-box { background: #eef6ff; padding: 1.5rem; border-left: 5px solid #007bff; margin: 2rem 0; }
+    </style>
+    <script type='module'>
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({startOnLoad:true});
+    </script>
+</head>
+<body>
+
+    <h1>The Ghost in the Machine: Why Your Old Switches Are Leaking Secrets</h1>
+
+    <p>When you retire an enterprise switch, you probably think you’re just moving a piece of metal from the rack to the recycling bin. You aren't. You’re actually handing over a digital treasure chest. If you haven't scrubbed the memory, that switch is still holding onto your SSH host keys, TLS certificates, and RADIUS secrets like a bad memory.</p>
+
+    <p>Think of a network switch like a hotel room. When you check out, you leave behind more than just a messy bed. You leave fingerprints on the glass, a receipt in the trash, and maybe a spare key under the rug. In the world of hardware, those "fingerprints" are cryptographic keys. If a bad actor gets their hands on that discarded hardware, they don't need to be a genius to recover those keys. They just need a bit of patience and a forensic tool.</p>
+
+    <h2>The Storage Problem</h2>
+
+    <p>Enterprise switches store data in a tiered system. You’ve got your primary Flash (NAND/NOR), which is the long-term memory. Then there’s NVRAM, which keeps your startup configs safe. Finally, there’s the TPM—the hardware root of trust. </p>
+
+    <p>The real headache is how modern Flash storage handles data. It uses something called "wear leveling." To keep the memory from burning out, the controller moves data around behind your back. When you delete a file, the switch doesn't actually wipe the data; it just tells the system, "Hey, this space is free to use." The actual cryptographic keys stay in those "hidden" blocks until they are eventually overwritten by new data. That could take months.</p>
+
+    <pre class='mermaid'>
+    graph TD
+        A[Asset Identification] --> B[Cryptographic Inventory]
+        B --> C{Logical Sanitization}
+        C -->|Success| D[Verification]
+        C -->|Fail| E[Manual Reformat]
+        D --> F[Physical Disposition]
+        F --> G[Shredding/Destruction]
+    </pre>
+
+    <h2>The Decommissioning Workflow</h2>
+
+    <p>You can't just run a factory reset and call it a day. That’s like cleaning a kitchen by just wiping the counter while leaving the trash can full. You need a "Sanitize-Verify-Destroy" lifecycle.</p>
+
+    <p>First, purge the crypto. On a Cisco device, that means running <code>crypto key zeroize rsa</code>. But don't stop there. You need to scrub local accounts, SNMP engine IDs, and any stored AAA secrets. If you’re dealing with high-security environments, logical wipes are just the warm-up. You need to trigger a block-level overwrite—what the industry calls a "Purge."</p>
+
+    <h2>The Reality of Hardware Persistence</h2>
+
+    <p>Some things simply cannot be cleaned. If your switch has a TPM (Trusted Platform Module), those keys are baked into the silicon. You cannot "erase" them. If you’re decommissioning a device with a hardware root of trust, that device is effectively "tainted." Do not resell it. Do not donate it. Destroy it.</p>
+
+    <table>
+        <tr>
+            <th>Challenge</th>
+            <th>Impact</th>
+            <th>Mitigation</th>
+        </tr>
+        <tr>
+            <td>Wear Leveling</td>
+            <td>Data persists in hidden blocks</td>
+            <td>Use vendor "Secure Erase" commands</td>
+        </tr>
+        <tr>
+            <td>TPM Persistence</td>
+            <td>Hardware-bound keys remain</td>
+            <td>Physical destruction only</td>
+        </tr>
+    </table>
+
+    <h2>Final Thoughts</h2>
+
+    <p>Don't let your old hardware become your next security breach. If you aren't following the NIST SP 800-88 standard for media sanitization, you’re leaving the door wide open. Keep a chain of custody, revoke your certificates, and when in doubt, shred the storage media to particles smaller than 2mm.</p>
+
+    <div class="summary-box">
+        <strong>Actionable Summary:</strong>
+        <ul>
+            <li><strong>Sanitize:</strong> Run explicit crypto-zeroize commands, not just factory resets.</li>
+            <li><strong>Verify:</strong> Perform a read-back to ensure no key headers remain.</li>
+            <li><strong>Destroy:</strong> If the device has a TPM or is EOL, physically destroy the storage media.</li>
+            <li><strong>Document:</strong> Keep a signed log of every decommissioned asset.</li>
+        </ul>
+    </div>
+
+</body>
+</html>
